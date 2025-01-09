@@ -1,0 +1,41 @@
+.sider {
+  box-shadow: 2px 0 8px 0 rgba(29, 35, 41, 0.05);
+  z-index: 10;
+
+  :global {
+    .ant-layout-sider-children {
+      display: flex;
+      flex-direction: column;
+    }
+  }
+}
+
+.logo {
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-bottom: 1px solid #f0f0f0;
+  
+  span {
+    font-size: 18px;
+    font-weight: 600;
+  }
+}
+
+.headerRight {
+  padding-right: 24px;
+  display: flex;
+  align-items: center;
+}
+
+.dark {
+  .logo {
+    border-bottom-color: #6d6d6d;
+  }
+  :global {
+    .ant-layout {
+      background: #343434 !important;
+    }
+  }
+}

@@ -1,0 +1,51 @@
+.container {
+  min-height: 100vh;
+  position: relative;
+  background: #fff;
+  transition: all 0.3s;
+  display: flex;
+  flex-direction: column;
+
+  &.dark {
+    background: #141414;
+  }
+}
+
+.themeButton {
+  position: fixed !important;
+  bottom: 40px;
+  right: 20px;
+  width: 40px !important;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.1) !important;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: inherit;
+  z-index: 1000;
+  padding: 0 !important;
+
+  :global {
+    .anticon {
+      font-size: 20px;
+    }
+  }
+  
+  &:hover {
+    background: rgba(255, 255, 255, 0.2) !important;
+    border-color: rgba(255, 255, 255, 0.3);
+  }
+
+  :global(.dark) & {
+    background: rgba(0, 0, 0, 0.2) !important;
+    border-color: rgba(255, 255, 255, 0.1);
+
+    &:hover {
+      background: rgba(0, 0, 0, 0.3) !important;
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+  }
+}

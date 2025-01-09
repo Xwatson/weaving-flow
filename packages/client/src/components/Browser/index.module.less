@@ -1,0 +1,80 @@
+.browser {
+  display: flex;
+  flex-direction: column;
+  background: var(--browser-bg, #fff);
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  height: 40px;
+  padding: 0 8px;
+  background: var(--toolbar-bg, #f5f5f5);
+  border-bottom: 1px solid var(--border-color, #e8e8e8);
+
+  .navigationButtons {
+    display: flex;
+    align-items: center;
+    margin-right: 8px;
+
+    button {
+      width: 32px;
+      height: 32px;
+      margin-right: 4px;
+      color: var(--icon-color, rgba(0, 0, 0, 0.85));
+
+      &:hover {
+        background: var(--button-hover-bg, rgba(0, 0, 0, 0.06));
+        color: var(--icon-hover-color, rgba(0, 0, 0, 0.85));
+      }
+
+      &[disabled] {
+        color: var(--icon-disabled-color, rgba(0, 0, 0, 0.25));
+      }
+    }
+  }
+
+  .urlInput {
+    flex: 1;
+    height: 32px;
+    background: var(--input-bg, #fff);
+    border: 1px solid var(--border-color, #e8e8e8);
+    border-radius: 16px;
+    padding: 4px 12px;
+    transition: all 0.3s;
+    color: var(--text-color, rgba(0, 0, 0, 0.85));
+
+    &::placeholder {
+      color: var(--placeholder-color, rgba(0, 0, 0, 0.45));
+    }
+
+    &:hover {
+      border-color: var(--primary-color, #1890ff);
+      background: var(--input-bg, #fff);
+    }
+
+    &:focus,
+    &-focused {
+      border-color: var(--primary-color, #1890ff);
+      background: var(--input-bg, #fff);
+      box-shadow: 0 0 0 2px var(--primary-shadow, rgba(24, 144, 255, 0.2));
+    }
+  }
+}
+
+:global(.dark) {
+  .browser {
+    --browser-bg: #141414;
+    --toolbar-bg: #383838;
+    --border-color: #303030;
+    --text-color: rgba(255, 255, 255, 0.85);
+    --icon-color: rgba(255, 255, 255, 0.45);
+    --icon-hover-color: rgba(255, 255, 255, 0.85);
+    --icon-disabled-color: rgba(255, 255, 255, 0.25);
+    --input-bg: #141414;
+    --button-hover-bg: rgba(255, 255, 255, 0.08);
+    --placeholder-color: rgba(255, 255, 255, 0.3);
+    --primary-color: #177ddc;
+    --primary-shadow: rgba(23, 125, 220, 0.2);
+  }
+}
