@@ -1,9 +1,9 @@
-import { encrypt } from '@weaving-flow/core';
+import { hashPassword, verifyPassword } from '@weaving-flow/core';
 import { prisma } from '../lib/prisma';
 
 export class AuthService {
   async createUser(email: string, password: string, name?: string) {
-    const hashedPassword = await encrypt(password, process.env.PASSWORD_SECRET || 'default-secret');
+    const hashedPassword = hashPassword(password);
     
     return prisma.user.create({
       data: {
@@ -23,11 +23,21 @@ export class AuthService {
       return null;
     }
 
-    const hashedPassword = await encrypt(password, process.env.PASSWORD_SECRET || 'default-secret');
-    if (hashedPassword !== user.password) {
+    if (!verifyPassword(password, user.password)) {
       return null;
     }
 
     return user;
+  }
+
+  async getCurrentUser(userId: string) {
+    return prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+      }
+    });
   }
 }
