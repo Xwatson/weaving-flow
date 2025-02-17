@@ -2,31 +2,30 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Form, Input, Button, Card, message } from 'antd';
 import { UserOutlined, LockOutlined, MailOutlined } from '@ant-design/icons';
-import { useRegisterMutation } from '@/store/services/auth';
+import { trpc } from '@/utils/trpc';
 import styles from './index.module.less';
 
 interface RegisterForm {
   email: string;
   password: string;
-  name: string;
+  name?: string;
 }
 
 const Register = () => {
   const navigate = useNavigate();
-  const [register] = useRegisterMutation();
-  const [loading, setLoading] = useState(false);
+  const registerMutation = trpc.auth.register.useMutation({
+    onSuccess: (data) => {
+      localStorage.setItem('token', data.token);
+      message.success('注册成功');
+      navigate('/admin/dashboard');
+    },
+    onError: () => {
+      message.error('注册失败，请检查输入');
+    },
+  });
 
-  const onFinish = async (values: RegisterForm) => {
-    try {
-      setLoading(true);
-      await register(values).unwrap();
-      message.success('注册成功，请登录');
-      navigate('/login');
-    } catch (error) {
-      message.error('注册失败，请稍后重试');
-    } finally {
-      setLoading(false);
-    }
+  const onFinish = (values: RegisterForm) => {
+    registerMutation.mutate(values);
   };
 
   return (
@@ -41,7 +40,7 @@ const Register = () => {
             name="email"
             rules={[
               { required: true, message: '请输入邮箱' },
-              { type: 'email', message: '请输入有效的邮箱地址' }
+              { type: 'email', message: '请输入有效的邮箱地址' },
             ]}
           >
             <Input
@@ -52,21 +51,10 @@ const Register = () => {
           </Form.Item>
 
           <Form.Item
-            name="name"
-            rules={[{ required: true, message: '请输入用户名' }]}
-          >
-            <Input
-              prefix={<UserOutlined />}
-              placeholder="用户名"
-              autoComplete="name"
-            />
-          </Form.Item>
-
-          <Form.Item
             name="password"
             rules={[
               { required: true, message: '请输入密码' },
-              { min: 6, message: '密码长度至少6位' }
+              { min: 6, message: '密码至少6个字符' },
             ]}
           >
             <Input.Password
@@ -77,24 +65,13 @@ const Register = () => {
           </Form.Item>
 
           <Form.Item
-            name="confirmPassword"
-            dependencies={['password']}
-            rules={[
-              { required: true, message: '请确认密码' },
-              ({ getFieldValue }) => ({
-                validator(_, value) {
-                  if (!value || getFieldValue('password') === value) {
-                    return Promise.resolve();
-                  }
-                  return Promise.reject(new Error('两次输入的密码不一致'));
-                },
-              }),
-            ]}
+            name="name"
+            rules={[{ required: false }]}
           >
-            <Input.Password
-              prefix={<LockOutlined />}
-              placeholder="确认密码"
-              autoComplete="new-password"
+            <Input
+              prefix={<UserOutlined />}
+              placeholder="姓名（选填）"
+              autoComplete="name"
             />
           </Form.Item>
 
@@ -102,16 +79,16 @@ const Register = () => {
             <Button
               type="primary"
               htmlType="submit"
+              className={styles.button}
+              loading={registerMutation.isLoading}
               block
-              loading={loading}
             >
               注册
             </Button>
+            <div className={styles.links}>
+              <Link to="/login">已有账号？立即登录</Link>
+            </div>
           </Form.Item>
-
-          <div className={styles.footer}>
-            <Link to="/login">已有账号？立即登录</Link>
-          </div>
         </Form>
       </Card>
     </div>

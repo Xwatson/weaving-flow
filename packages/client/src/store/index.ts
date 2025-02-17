@@ -1,6 +1,5 @@
 import { configureStore } from "@reduxjs/toolkit";
 import { setupListeners } from "@reduxjs/toolkit/query";
-import { authApi } from "./services/auth";
 import authReducer from "./slices/authSlice";
 import workflowReducer from "./slices/workflowSlice";
 import bookmarkReducer from "./slices/bookmarkSlice";
@@ -10,7 +9,6 @@ import themeReducer from "./slices/themeSlice";
 
 export const store = configureStore({
   reducer: {
-    [authApi.reducerPath]: authApi.reducer,
     auth: authReducer,
     workflow: workflowReducer,
     bookmark: bookmarkReducer,
@@ -19,7 +17,7 @@ export const store = configureStore({
     theme: themeReducer,
   },
   middleware: (getDefaultMiddleware) =>
-    getDefaultMiddleware().concat(authApi.middleware),
+    getDefaultMiddleware(),
 });
 
 setupListeners(store.dispatch);

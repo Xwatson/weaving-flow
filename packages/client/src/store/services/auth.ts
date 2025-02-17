@@ -1,4 +1,4 @@
-import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 
 interface User {
   id: string;
@@ -23,13 +23,13 @@ interface AuthResponse {
 }
 
 export const authApi = createApi({
-  reducerPath: 'authApi',
+  reducerPath: "authApi",
   baseQuery: fetchBaseQuery({
-    baseUrl: '/api',
+    baseUrl: "/api",
     prepareHeaders: (headers) => {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem("token");
       if (token) {
-        headers.set('authorization', `Bearer ${token}`);
+        headers.set("authorization", `Bearer ${token}`);
       }
       return headers;
     },
@@ -37,36 +37,37 @@ export const authApi = createApi({
   endpoints: (builder) => ({
     login: builder.mutation<AuthResponse, LoginRequest>({
       query: (credentials) => ({
-        url: '/auth/login',
-        method: 'POST',
+        url: "/auth/login",
+        method: "POST",
         body: credentials,
       }),
       transformResponse: (response: AuthResponse) => {
-        localStorage.setItem('token', response.token);
+        localStorage.setItem("token", response.token);
         return response;
       },
     }),
     register: builder.mutation<AuthResponse, RegisterRequest>({
       query: (data) => ({
-        url: '/auth/register',
-        method: 'POST',
+        url: "/auth/register",
+        method: "POST",
         body: data,
       }),
+      transformResponse: (response: AuthResponse) => {
+        localStorage.setItem("token", response.token);
+        return response;
+      },
     }),
     logout: builder.mutation<void, void>({
       query: () => ({
-        url: '/auth/logout',
-        method: 'POST',
+        url: "/auth/logout",
+        method: "POST",
       }),
-      async onQueryStarted(_, { dispatch, queryFulfilled }) {
-        try {
-          await queryFulfilled;
-          localStorage.removeItem('token');
-          dispatch(authApi.util.resetApiState());
-        } catch {
-          // 忽略错误
-        }
+      transformResponse: () => {
+        localStorage.removeItem("token");
       },
+    }),
+    getCurrentUser: builder.query<User, void>({
+      query: () => "/auth/me",
     }),
   }),
 });
@@ -75,4 +76,5 @@ export const {
   useLoginMutation,
   useRegisterMutation,
   useLogoutMutation,
+  useGetCurrentUserQuery,
 } = authApi;

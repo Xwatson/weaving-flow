@@ -5,6 +5,7 @@ type ThemeMode = "light" | "dark";
 
 interface ThemeState {
   mode: ThemeMode;
+  collapsed: boolean;
 }
 
 // 获取系统主题偏好
@@ -28,6 +29,7 @@ const getInitialTheme = (): ThemeMode => {
 
 const initialState: ThemeState = {
   mode: getInitialTheme(),
+  collapsed: false,
 };
 
 // 监听系统主题变化
@@ -51,7 +53,7 @@ const themeSlice = createSlice({
   name: "theme",
   initialState,
   reducers: {
-    toggleTheme: (state) => {
+    toggleTheme(state) {
       state.mode = state.mode === "light" ? "dark" : "light";
       localStorage.setItem("theme", state.mode);
       if (state.mode === "dark") {
@@ -60,8 +62,11 @@ const themeSlice = createSlice({
         document.documentElement.classList.remove("dark");
       }
     },
+    setCollapsed(state, action: PayloadAction<boolean>) {
+      state.collapsed = action.payload;
+    },
   },
 });
 
-export const { toggleTheme } = themeSlice.actions;
+export const { toggleTheme, setCollapsed } = themeSlice.actions;
 export default themeSlice.reducer;

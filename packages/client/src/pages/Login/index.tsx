@@ -1,9 +1,9 @@
-import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { Form, Input, Button, Card, message } from 'antd';
-import { UserOutlined, LockOutlined } from '@ant-design/icons';
-import { useLoginMutation } from '@/store/services/auth';
-import styles from './index.module.less';
+import { useState } from "react";
+import { useNavigate, Link } from "react-router-dom";
+import { Form, Input, Button, Card, message } from "antd";
+import { UserOutlined, LockOutlined } from "@ant-design/icons";
+import { trpc } from "@/utils/trpc";
+import styles from "./index.module.less";
 
 interface LoginForm {
   email: string;
@@ -12,21 +12,19 @@ interface LoginForm {
 
 const Login = () => {
   const navigate = useNavigate();
-  const [login] = useLoginMutation();
-  const [loading, setLoading] = useState(false);
+  const loginMutation = trpc.auth.login.useMutation({
+    onSuccess: (data) => {
+      localStorage.setItem("token", data.token);
+      message.success("登录成功");
+      navigate("/admin/dashboard");
+    },
+    onError: () => {
+      message.error("登录失败，请检查邮箱和密码");
+    },
+  });
 
   const onFinish = async (values: LoginForm) => {
-    try {
-      setLoading(true);
-      const response = await login(values).unwrap();
-      localStorage.setItem('token', response.token);
-      message.success('登录成功');
-      navigate('/dashboard');
-    } catch (error) {
-      message.error('登录失败，请检查邮箱和密码');
-    } finally {
-      setLoading(false);
-    }
+    loginMutation.mutate(values);
   };
 
   return (
@@ -41,8 +39,8 @@ const Login = () => {
           <Form.Item
             name="email"
             rules={[
-              { required: true, message: '请输入邮箱' },
-              { type: 'email', message: '请输入有效的邮箱地址' }
+              { required: true, message: "请输入邮箱" },
+              { type: "email", message: "请输入有效的邮箱地址" },
             ]}
           >
             <Input
@@ -51,10 +49,9 @@ const Login = () => {
               autoComplete="email"
             />
           </Form.Item>
-
           <Form.Item
             name="password"
-            rules={[{ required: true, message: '请输入密码' }]}
+            rules={[{ required: true, message: "请输入密码" }]}
           >
             <Input.Password
               prefix={<LockOutlined />}
@@ -62,21 +59,21 @@ const Login = () => {
               autoComplete="current-password"
             />
           </Form.Item>
-
           <Form.Item>
             <Button
               type="primary"
               htmlType="submit"
+              className={styles.button}
+              loading={loginMutation.isLoading}
               block
-              loading={loading}
             >
               登录
             </Button>
+            <div className={styles.links}>
+              <Link to="/register">注册账号</Link>
+              <Link to="/forgot-password">忘记密码？</Link>
+            </div>
           </Form.Item>
-
-          <div className={styles.footer}>
-            <Link to="/register">还没有账号？立即注册</Link>
-          </div>
         </Form>
       </Card>
     </div>
