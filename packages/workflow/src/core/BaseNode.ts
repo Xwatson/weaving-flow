@@ -1,11 +1,12 @@
-import { v4 as uuidv4 } from 'uuid';
-import type { WorkflowNode } from '@weaving-flow/core';
+import { v4 as uuidv4 } from "uuid";
+import type { WorkflowNode } from "@weaving-flow/core";
 
 export interface NodeInput {
   name: string;
   type: string;
   required?: boolean;
   default?: any;
+  description?: string;
 }
 
 export interface NodeOutput {
@@ -14,12 +15,13 @@ export interface NodeOutput {
 }
 
 export abstract class BaseNode implements WorkflowNode {
-  id: string;
-  type: string;
-  name: string;
-  config: Record<string, any>;
-  inputs: string[];
-  outputs: string[];
+  public id: string;
+  public type: string;
+  public name: string;
+  public config: Record<string, any>;
+  public inputs: Map<string, any>;
+  public outputs: Map<string, any>;
+  protected workflowId: string;
   private inputValues: Map<string, any>;
   private outputValues: Map<string, any>;
 
@@ -28,8 +30,9 @@ export abstract class BaseNode implements WorkflowNode {
     this.name = name;
     this.type = type;
     this.config = config;
-    this.inputs = [];
-    this.outputs = [];
+    this.inputs = new Map();
+    this.outputs = new Map();
+    this.workflowId = ""; // 初始化为空字符串
     this.inputValues = new Map();
     this.outputValues = new Map();
   }
@@ -42,7 +45,7 @@ export abstract class BaseNode implements WorkflowNode {
 
   // 验证输入值
   validateInput(name: string, value: any): boolean {
-    const input = this.getInputDefinitions().find(i => i.name === name);
+    const input = this.getInputDefinitions().find((i) => i.name === name);
     if (!input) {
       return false;
     }
@@ -72,7 +75,7 @@ export abstract class BaseNode implements WorkflowNode {
 
   // 设置输出值
   protected setOutput(name: string, value: any): void {
-    const output = this.getOutputDefinitions().find(o => o.name === name);
+    const output = this.getOutputDefinitions().find((o) => o.name === name);
     if (!output) {
       throw new Error(`Output ${name} not defined`);
     }
@@ -101,5 +104,15 @@ export abstract class BaseNode implements WorkflowNode {
     node.inputValues = new Map(this.inputValues);
     node.outputValues = new Map(this.outputValues);
     return node;
+  }
+
+  // 设置工作流ID
+  setWorkflowId(workflowId: string): void {
+    this.workflowId = workflowId;
+  }
+
+  // 获取工作流ID
+  getWorkflowId(): string {
+    return this.workflowId;
   }
 }

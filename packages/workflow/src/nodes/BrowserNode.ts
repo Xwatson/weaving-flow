@@ -15,59 +15,48 @@ export class BrowserNode extends BaseNode {
         required: true,
       },
       {
-        name: 'script',
-        type: 'string',
-        required: false,
-      },
-      {
-        name: 'timeout',
+        name: 'width',
         type: 'number',
         required: false,
-        default: 30000,
+        default: 1280,
       },
+      {
+        name: 'height',
+        type: 'number',
+        required: false,
+        default: 800,
+      }
     ];
   }
 
   getOutputDefinitions(): NodeOutput[] {
     return [
       {
-        name: 'result',
-        type: 'any',
+        name: 'browser',
+        type: 'object',
       },
       {
         name: 'error',
         type: 'Error',
-      },
+      }
     ];
   }
 
   async execute(): Promise<void> {
     try {
       const url = this.getInput('url');
-      const script = this.getInput('script');
-      const timeout = this.getInput('timeout');
+      const width = this.getInput('width');
+      const height = this.getInput('height');
 
-      // 创建浏览器视图
-      const viewId = await this.browserService.create(url, {
+      // 创建浏览器实例
+      const browser = await this.browserService.create(url, {
         x: 0,
         y: 0,
-        width: 800,
-        height: 600,
+        width,
+        height,
       });
 
-      // 等待页面加载
-      await new Promise(resolve => setTimeout(resolve, timeout));
-
-      // 如果有脚本则执行
-      let result = null;
-      if (script) {
-        result = await this.browserService.executeJs(viewId, script);
-      }
-
-      // 关闭浏览器视图
-      await this.browserService.close(viewId);
-
-      this.setOutput('result', result);
+      this.setOutput('browser', browser);
     } catch (error) {
       this.setOutput('error', error);
       throw error;
