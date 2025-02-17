@@ -14,7 +14,7 @@ const MainLayout: React.FC = () => {
 
   return (
     <div className={styles.container}>
-      <Browser />
+      {window.browser && <Browser />}
       <Button
         className={styles.themeButton}
         icon={themeMode === "dark" ? <BulbFilled /> : <BulbOutlined />}
