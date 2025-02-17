@@ -7,7 +7,8 @@ export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src')
+      '@': path.resolve(__dirname, './src'),
+      '@server': path.resolve(__dirname, '../server/src')
     }
   },
   css: {
@@ -21,6 +22,10 @@ export default defineConfig({
     host: true,
     proxy: {
       '/api': {
+        target: 'http://localhost:9001',
+        changeOrigin: true
+      },
+      '/trpc': {
         target: 'http://localhost:9001',
         changeOrigin: true
       }
