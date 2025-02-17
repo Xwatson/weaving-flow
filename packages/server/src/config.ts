@@ -1,7 +1,21 @@
-import { config as dotenv } from "dotenv";
+import dotenv from "dotenv";
 
-// 加载 .env 文件
-dotenv();
+// 加载环境变量
+dotenv.config();
+
+// JWT 配置
+export const JWT_SECRET = process.env.JWT_SECRET || "your-super-secret-jwt-key";
+export const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "7d";
+
+// 服务器配置
+export const PORT = process.env.PORT || 3000;
+export const HOST = process.env.HOST || "localhost";
+
+// 数据库配置
+export const DATABASE_URL = process.env.DATABASE_URL;
+
+// 其他配置
+export const NODE_ENV = process.env.NODE_ENV || "development";
 
 interface ServerConfig {
   port: number;
@@ -27,12 +41,12 @@ interface Config {
 
 export const config: Config = {
   server: {
-    port: parseInt(process.env.PORT || "9001", 10),
-    host: process.env.HOST || "127.0.0.1",
+    port: Number(PORT),
+    host: HOST,
   },
   jwt: {
-    secret: process.env.JWT_SECRET || "your-secret-key",
-    expiresIn: "7d",
+    secret: JWT_SECRET,
+    expiresIn: JWT_EXPIRES_IN,
   },
   cors: {
     origin: ["http://localhost:3000", "http://localhost:5173"],
