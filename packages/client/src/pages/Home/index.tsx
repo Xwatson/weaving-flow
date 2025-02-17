@@ -16,6 +16,9 @@ const HomePage: React.FC = () => {
   return (
     <div className={styles.container}>
       <div className={styles.content}>
+        <div className={styles.linkWrapper}>
+          <a href="/admin/workflow">工作流</a>
+        </div>
         <div className={styles.searchWrapper}>
           <Search
             placeholder="输入网址或搜索内容"

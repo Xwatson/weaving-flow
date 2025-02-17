@@ -1,129 +1,115 @@
-import { useState } from "react";
-import { Layout, Menu, Button, theme, Dropdown } from "antd";
-import { Outlet, useNavigate, useLocation } from "react-router-dom";
-import { useSelector, useDispatch } from "react-redux";
+import React, { useEffect } from "react";
+import { Layout, Menu, Button, Dropdown, theme } from "antd";
 import {
   MenuFoldOutlined,
   MenuUnfoldOutlined,
-  DashboardOutlined,
-  ApiOutlined,
-  BookOutlined,
-  KeyOutlined,
-  LogoutOutlined,
   UserOutlined,
-  ScheduleOutlined,
-  BulbOutlined,
-  BulbFilled,
+  LogoutOutlined,
+  DashboardOutlined,
+  AppstoreOutlined,
+  BookOutlined,
+  SettingOutlined,
 } from "@ant-design/icons";
-import type { MenuProps } from "antd";
+import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { useDispatch } from "react-redux";
+import { setCollapsed } from "@/store/slices/themeSlice";
+import { useSelector } from "react-redux";
 import { RootState } from "@/store";
-import { toggleTheme } from "@/store/slices/themeSlice";
 import styles from "./index.module.less";
+import { trpc } from "@/utils/trpc";
 
 const { Header, Sider, Content } = Layout;
 
-const menuItems = [
-  {
-    key: "/admin/dashboard",
-    icon: <DashboardOutlined />,
-    label: "仪表盘",
-  },
-  {
-    key: "/admin/workflow",
-    icon: <ScheduleOutlined />,
-    label: "工作流",
-  },
-  {
-    key: "/admin/crawler",
-    icon: <ApiOutlined />,
-    label: "爬虫",
-  },
-  {
-    key: "/admin/bookmarks",
-    icon: <BookOutlined />,
-    label: "书签",
-  },
-  {
-    key: "/admin/credentials",
-    icon: <KeyOutlined />,
-    label: "凭证",
-  },
-];
-
-const AdminLayout = () => {
+const AdminLayout: React.FC = () => {
+  const themeMode = useSelector((state: RootState) => state.theme.mode);
   const navigate = useNavigate();
   const location = useLocation();
   const dispatch = useDispatch();
-  const [collapsed, setCollapsed] = useState(false);
+  const collapsed = useSelector((state: RootState) => state.theme.collapsed);
   const {
-    token: { colorBgContainer, colorBgElevated },
+    token: { colorBgContainer },
   } = theme.useToken();
-  const themeMode = useSelector((state: RootState) => state.theme.mode);
 
-  const handleLogout = () => {
-    localStorage.removeItem("token");
+  const { data: user } = trpc.auth.me.useQuery();
+  const logoutMutation = trpc.auth.logout.useMutation();
+
+  const handleLogout = async () => {
+    await logoutMutation.mutateAsync();
     navigate("/login");
   };
 
-  const userMenuItems: MenuProps["items"] = [
+  const items = [
     {
-      key: "logout",
+      key: "1",
+      label: <span onClick={handleLogout}>退出登录</span>,
       icon: <LogoutOutlined />,
-      label: "退出登录",
-      onClick: handleLogout,
     },
   ];
 
   return (
     <Layout
-      style={{ minHeight: "100vh" }}
       className={themeMode === "dark" ? styles.dark : ""}
+      style={{ minHeight: "100vh" }}
     >
       <Sider
+        className={styles.sider}
         trigger={null}
         collapsible
         collapsed={collapsed}
-        theme={themeMode === "dark" ? "dark" : "light"}
-        className={styles.sider}
+        style={{ background: colorBgContainer }}
       >
         <div className={styles.logo}>
-          {!collapsed && <span>Weaving Flow</span>}
+          <Link to="/">{collapsed ? "WF" : "Weaving Flow"}</Link>
         </div>
         <Menu
+          theme={themeMode === "dark" ? "dark" : "light"}
           mode="inline"
           selectedKeys={[location.pathname]}
-          items={menuItems}
-          onClick={({ key }) => navigate(key)}
-          theme={themeMode === "dark" ? "dark" : "light"}
+          style={{ background: colorBgContainer }}
+          items={[
+            {
+              key: "/admin/dashboard",
+              icon: <DashboardOutlined />,
+              label: <Link to="/admin/dashboard">仪表盘</Link>,
+            },
+            {
+              key: "/admin/workflow",
+              icon: <AppstoreOutlined />,
+              label: <Link to="/admin/workflow">工作流</Link>,
+            },
+            {
+              key: "/admin/docs",
+              icon: <BookOutlined />,
+              label: <Link to="/admin/docs">文档</Link>,
+            },
+            {
+              key: "/admin/settings",
+              icon: <SettingOutlined />,
+              label: <Link to="/admin/settings">设置</Link>,
+            },
+          ]}
         />
       </Sider>
       <Layout>
         <Header
-          style={{
-            padding: 0,
-            background: colorBgElevated,
-          }}
-          className="flex items-center justify-between shadow-md"
+          className={styles.header}
+          style={{ background: colorBgContainer }}
         >
           <Button
             type="text"
             icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-            onClick={() => setCollapsed(!collapsed)}
+            onClick={() => dispatch(setCollapsed(!collapsed))}
             style={{
               fontSize: "16px",
               width: 64,
               height: 64,
             }}
           />
-          <div className={styles.headerRight}>
-            <Button
-              type="text"
-              icon={themeMode === "dark" ? <BulbFilled /> : <BulbOutlined />}
-              onClick={() => dispatch(toggleTheme())}
-              className="mr-4"
-            />
-            <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
-              <Button type="text" icon={<UserOutlined />} />
+          <div className={styles.userInfo}>
+            <Dropdown menu={{ items }} placement="bottomRight">
+              <Button type="text" icon={<UserOutlined />}>
+                {user?.name}
+              </Button>
             </Dropdown>
           </div>
         </Header>
@@ -132,10 +118,7 @@ const AdminLayout = () => {
             margin: "24px 16px",
             padding: 24,
             background: colorBgContainer,
-            borderRadius: 8,
-            minHeight: 280,
           }}
-          className="shadow-sm"
         >
           <Outlet />
         </Content>

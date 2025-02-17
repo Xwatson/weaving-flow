@@ -1,3 +1,5 @@
+@dark-bg-color: #1b1b1b;
+
 .sider {
   box-shadow: 2px 0 8px 0 rgba(29, 35, 41, 0.05);
   z-index: 10;
@@ -31,11 +33,22 @@
 
 .dark {
   .logo {
-    border-bottom-color: #6d6d6d;
+    border-bottom-color: @dark-bg-color;
   }
   :global {
     .ant-layout {
-      background: #343434 !important;
+      background: @dark-bg-color !important;
     }
   }
 }
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0;
+}
+
+.userInfo {
+  display: flex;
+  align-items: center;}

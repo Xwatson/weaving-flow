@@ -9,6 +9,8 @@ import Workflow from "@/pages/Workflow";
 import Bookmarks from "@/pages/Bookmarks";
 import Crawler from "@/pages/Crawler";
 import Credentials from "@/pages/Credentials";
+import PrivateRoute from "@/components/PrivateRoute";
+import WorkflowEdit from "@/pages/Workflow/Edit";
 
 const router = createBrowserRouter([
   {
@@ -22,42 +24,61 @@ const router = createBrowserRouter([
     ],
   },
   {
-    path: "/admin",
-    element: <AdminLayout />,
-    children: [
-      {
-        path: "/admin",
-        element: <Navigate to="/admin/dashboard" replace />,
-      },
-      {
-        path: "/admin/dashboard",
-        element: <Dashboard />,
-      },
-      {
-        path: "/admin/workflow",
-        element: <Workflow />,
-      },
-      {
-        path: "/admin/bookmarks",
-        element: <Bookmarks />,
-      },
-      {
-        path: "/admin/crawler",
-        element: <Crawler />,
-      },
-      {
-        path: "/admin/credentials",
-        element: <Credentials />,
-      },
-    ],
-  },
-  {
     path: "/login",
     element: <Login />,
   },
   {
     path: "/register",
     element: <Register />,
+  },
+  {
+    path: "/admin",
+    element: <PrivateRoute />,
+    children: [
+      {
+        path: "",
+        element: <AdminLayout />,
+        children: [
+          {
+            path: "",
+            element: <Navigate to="/admin/dashboard" replace />,
+          },
+          {
+            path: "dashboard",
+            element: <Dashboard />,
+          },
+          {
+            path: "workflow",
+            children: [
+              {
+                path: "",
+                element: <Workflow />,
+              },
+              {
+                path: "create",
+                element: <WorkflowEdit />,
+              },
+              {
+                path: "edit/:id",
+                element: <WorkflowEdit />,
+              },
+            ],
+          },
+          {
+            path: "bookmarks",
+            element: <Bookmarks />,
+          },
+          {
+            path: "crawler",
+            element: <Crawler />,
+          },
+          {
+            path: "credentials",
+            element: <Credentials />,
+          },
+        ],
+      },
+    ],
   },
 ]);
 
