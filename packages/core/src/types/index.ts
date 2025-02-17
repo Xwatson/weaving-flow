@@ -27,8 +27,8 @@ export interface WorkflowNode {
   type: string;
   name: string;
   config: Record<string, any>;
-  inputs: string[];
-  outputs: string[];
+  inputs: Map<string, any>;
+  outputs: Map<string, any>;
 }
 
 export interface WorkflowConnection {
