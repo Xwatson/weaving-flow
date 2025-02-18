@@ -7,7 +7,7 @@ export class WorkflowService {
   async create(
     data: {
       name: string;
-      config: Record<string, any>;
+      config: string;
       description?: string | null;
     },
     ctx: Context
@@ -16,7 +16,7 @@ export class WorkflowService {
       data: {
         name: data.name,
         description: data.description,
-        config: JSON.stringify(data.config),
+        config: data.config,
         status: "inactive",
         userId: ctx.user!.id,
       },
@@ -29,7 +29,7 @@ export class WorkflowService {
     data: {
       name?: string;
       description?: string | null;
-      config?: Record<string, any>;
+      config?: string;
       status?: "active" | "inactive";
     },
     ctx: Context
@@ -42,7 +42,7 @@ export class WorkflowService {
 
     const updateData = {
       ...data,
-      config: data.config ? JSON.stringify(data.config) : undefined,
+      config: data.config,
       userId: ctx.user!.id,
     };
 
@@ -72,10 +72,7 @@ export class WorkflowService {
       orderBy: { updatedAt: "desc" },
     });
 
-    return workflows.map((workflow) => ({
-      ...workflow,
-      config: JSON.parse(workflow.config),
-    }));
+    return workflows;
   }
 
   // 获取单个工作流
@@ -91,10 +88,7 @@ export class WorkflowService {
       return null;
     }
 
-    return {
-      ...workflow,
-      config: JSON.parse(workflow.config),
-    };
+    return workflow;
   }
 
   // 执行工作流

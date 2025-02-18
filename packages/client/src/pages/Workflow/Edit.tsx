@@ -1,20 +1,200 @@
-import React, { useEffect } from "react";
-import { Form, Input, Button, Card, message, Spin } from "antd";
+import React, { useEffect, useState, useCallback, useRef } from "react";
+import {
+  Form,
+  Input,
+  Button,
+  Card,
+  message,
+  Spin,
+  Layout,
+  theme,
+  Dropdown,
+} from "antd";
 import { useNavigate, useParams } from "react-router-dom";
 import { trpc } from "@/utils/trpc";
+import ReactFlow, {
+  Background,
+  Controls,
+  MiniMap,
+  Node,
+  Edge,
+  Connection,
+  addEdge,
+  NodeChange,
+  EdgeChange,
+  applyNodeChanges,
+  applyEdgeChanges,
+  Panel,
+  useReactFlow,
+  XYPosition,
+  ReactFlowProvider,
+} from "reactflow";
+import "reactflow/dist/style.css";
+import styles from "./index.module.less";
+import { MenuFoldOutlined, MenuUnfoldOutlined } from "@ant-design/icons";
+
+const { Sider, Content } = Layout;
+
+interface FlowProps {
+  nodes: Node[];
+  edges: Edge[];
+  onNodesChange: (changes: NodeChange[]) => void;
+  onEdgesChange: (changes: EdgeChange[]) => void;
+  onConnect: (params: Connection) => void;
+}
+
+const Flow: React.FC<FlowProps> = ({
+  nodes,
+  edges,
+  onNodesChange,
+  onEdgesChange,
+  onConnect,
+}) => {
+  const [contextMenu, setContextMenu] = useState<{
+    x: number;
+    y: number;
+    position: XYPosition;
+  } | null>(null);
+
+  const reactFlowWrapper = useRef<HTMLDivElement>(null);
+  const { project } = useReactFlow();
+
+  const onPaneContextMenu = useCallback(
+    (event: React.MouseEvent) => {
+      event.preventDefault();
+      const boundingRect = reactFlowWrapper.current?.getBoundingClientRect();
+      if (boundingRect) {
+        const position = project({
+          x: event.clientX - boundingRect.left,
+          y: event.clientY - boundingRect.top,
+        });
+        setContextMenu({
+          x: event.clientX,
+          y: event.clientY,
+          position,
+        });
+      }
+    },
+    [project]
+  );
+
+  const onNodeContextMenu = useCallback(
+    (event: React.MouseEvent, node: Node) => {
+      event.preventDefault();
+      const boundingRect = reactFlowWrapper.current?.getBoundingClientRect();
+      if (boundingRect) {
+        const position = project({
+          x: event.clientX - boundingRect.left,
+          y: event.clientY - boundingRect.top,
+        });
+        setContextMenu({
+          x: event.clientX,
+          y: event.clientY,
+          position,
+        });
+      }
+    },
+    [project]
+  );
+
+  const onPaneClick = useCallback(() => {
+    setContextMenu(null);
+  }, []);
+
+  const addNode = useCallback(
+    (type: string) => {
+      if (contextMenu) {
+        const newNode: Node = {
+          id: `${type}-${Date.now()}`,
+          type,
+          position: contextMenu.position,
+          data: { label: `${type} node` },
+        };
+        onNodesChange([{ type: "add", item: newNode }]);
+        setContextMenu(null);
+      }
+    },
+    [contextMenu, onNodesChange]
+  );
+
+  const contextMenuItems = [
+    {
+      key: "browser",
+      label: "浏览器节点",
+      onClick: () => addNode("browser"),
+    },
+    {
+      key: "crawler",
+      label: "爬虫节点",
+      onClick: () => addNode("crawler"),
+    },
+    {
+      key: "process",
+      label: "处理节点",
+      onClick: () => addNode("process"),
+    },
+  ];
+
+  return (
+    <div style={{ width: "100%", height: "100%" }} ref={reactFlowWrapper}>
+      <ReactFlow
+        nodes={nodes}
+        edges={edges}
+        onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
+        onConnect={onConnect}
+        onPaneClick={onPaneClick}
+        onPaneContextMenu={onPaneContextMenu}
+        onNodeContextMenu={onNodeContextMenu}
+        fitView
+      >
+        <Background />
+        <Controls />
+        <MiniMap />
+      </ReactFlow>
+      {contextMenu && (
+        <div
+          style={{
+            position: "fixed",
+            width: 200,
+            left: contextMenu.x,
+            top: contextMenu.y,
+            zIndex: 1000,
+          }}
+        >
+          <Dropdown
+            menu={{ items: contextMenuItems }}
+            open={true}
+            trigger={["contextMenu"]}
+            getPopupContainer={(triggerNode) =>
+              triggerNode.parentNode as HTMLElement
+            }
+          >
+            <Button
+              style={{ border: "none", padding: 0, width: 0, height: 0 }}
+            />
+          </Dropdown>
+        </div>
+      )}
+    </div>
+  );
+};
 
 const WorkflowEdit: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const isEdit = !!id;
+  const [collapsed, setCollapsed] = useState(false);
+  const [nodes, setNodes] = useState<Node[]>([]);
+  const [edges, setEdges] = useState<Edge[]>([]);
 
   const { data: workflow, isLoading } = trpc.workflow.getById.useQuery(
     { id: id! },
-    { 
+    {
       enabled: isEdit,
-      retry: false
+      retry: false,
     }
   );
-  
+
   const [form] = Form.useForm();
   const navigate = useNavigate();
 
@@ -25,7 +205,7 @@ const WorkflowEdit: React.FC = () => {
     },
     onError: (error) => {
       message.error(error.message || "创建失败");
-    }
+    },
   });
 
   const updateMutation = trpc.workflow.update.useMutation({
@@ -35,7 +215,7 @@ const WorkflowEdit: React.FC = () => {
     },
     onError: (error) => {
       message.error(error.message || "更新失败");
-    }
+    },
   });
 
   useEffect(() => {
@@ -43,15 +223,26 @@ const WorkflowEdit: React.FC = () => {
       form.setFieldsValue({
         name: workflow.name,
         description: workflow.description,
-        config: workflow.config ? JSON.stringify(workflow.config) : "",
       });
+      const config: Record<string, any> = workflow.config
+        ? JSON.parse(workflow.config)
+        : {};
+      if (config?.nodes) {
+        setNodes(config.nodes);
+      }
+      if (config?.edges) {
+        setEdges(config.edges);
+      }
     }
   }, [workflow, form]);
 
   const onFinish = async (values: any) => {
     const data = {
       ...values,
-      config: values.config ? JSON.parse(values.config) : {},
+      config: JSON.stringify({
+        nodes,
+        edges,
+      }),
     };
 
     try {
@@ -68,62 +259,94 @@ const WorkflowEdit: React.FC = () => {
     }
   };
 
+  const onNodesChange = useCallback((changes: NodeChange[]) => {
+    setNodes((nds) => applyNodeChanges(changes, nds));
+  }, []);
+
+  const onEdgesChange = useCallback((changes: EdgeChange[]) => {
+    setEdges((eds) => applyEdgeChanges(changes, eds));
+  }, []);
+
+  const onConnect = useCallback((params: Connection) => {
+    setEdges((eds) => addEdge(params, eds));
+  }, []);
+
+  const {
+    token: { colorBgContainer },
+  } = theme.useToken();
+
   return (
-    <div style={{ padding: 24 }}>
-      <Card title={isEdit ? "编辑工作流" : "创建工作流"}>
+    <Layout className={styles.editLayout}>
+      <Sider
+        className={styles.editSider}
+        width={300}
+        collapsible
+        collapsed={collapsed}
+        trigger={null}
+        style={{
+          background: colorBgContainer,
+        }}
+      >
+        <div style={{ padding: "16px" }}>
+          <Button
+            type="text"
+            icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+            onClick={() => setCollapsed(!collapsed)}
+            style={{
+              fontSize: "16px",
+              width: 64,
+              height: 64,
+            }}
+          />
+          {!collapsed && (
+            <Form
+              form={form}
+              layout="vertical"
+              onFinish={onFinish}
+              initialValues={{
+                name: "",
+                description: "",
+              }}
+            >
+              <Form.Item
+                label="名称"
+                name="name"
+                rules={[{ required: true, message: "请输入工作流名称" }]}
+              >
+                <Input placeholder="请输入工作流名称" />
+              </Form.Item>
+
+              <Form.Item label="描述" name="description">
+                <Input.TextArea placeholder="请输入工作流描述" />
+              </Form.Item>
+
+              <Form.Item>
+                <Button type="primary" htmlType="submit">
+                  保存
+                </Button>
+              </Form.Item>
+            </Form>
+          )}
+        </div>
+      </Sider>
+      <Content>
         {isEdit && isLoading ? (
           <div style={{ textAlign: "center", padding: "20px" }}>
             <Spin />
           </div>
         ) : (
-          <Form
-            form={form}
-            layout="vertical"
-            onFinish={onFinish}
-            initialValues={{
-              name: "",
-              description: "",
-              config: "",
-            }}
-          >
-            <Form.Item
-              label="名称"
-              name="name"
-              rules={[{ required: true, message: "请输入工作流名称" }]}
-            >
-              <Input placeholder="请输入工作流名称" />
-            </Form.Item>
-
-            <Form.Item label="描述" name="description">
-              <Input.TextArea placeholder="请输入工作流描述" />
-            </Form.Item>
-
-            <Form.Item label="配置" name="config">
-              <Input.TextArea
-                placeholder="请输入 JSON 格式的配置"
-                rows={4}
-              />
-            </Form.Item>
-
-            <Form.Item>
-              <Button
-                type="primary"
-                htmlType="submit"
-                loading={createMutation.isLoading || updateMutation.isLoading}
-              >
-                {isEdit ? "更新" : "创建"}
-              </Button>
-              <Button
-                style={{ marginLeft: 8 }}
-                onClick={() => navigate("/admin/workflow")}
-              >
-                取消
-              </Button>
-            </Form.Item>
-          </Form>
+          <ReactFlowProvider>
+            <Flow
+              nodes={nodes}
+              edges={edges}
+              onNodesChange={onNodesChange}
+              onEdgesChange={onEdgesChange}
+              onConnect={onConnect}
+            />
+          </ReactFlowProvider>
         )}
-      </Card>
-    </div>
+      </Content>
+    </Layout>
   );
 };
 

@@ -8,7 +8,7 @@ const workflowService = new WorkflowService();
 const workflowSchema = z.object({
   name: z.string().min(1, "名称不能为空"),
   description: z.string().nullable(),
-  config: z.record(z.any()).optional().default({}),
+  config: z.string(),
 });
 
 export const workflowRouter = router({
