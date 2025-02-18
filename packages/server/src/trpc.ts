@@ -29,8 +29,16 @@ export const createContext = async ({
     const token = authHeader.split(" ")[1];
     try {
       // 验证 token
-      const decoded = jwt.verify(token, config.jwt.secret) as User;
-      user = decoded;
+      const decoded = jwt.verify(token, config.jwt.secret) as {
+        userId: string;
+        email: string;
+        name: string;
+      };
+      user = {
+        id: decoded.userId,
+        email: decoded.email,
+        name: decoded.name,
+      };
     } catch (error) {
       // token 无效，不设置用户信息
     }

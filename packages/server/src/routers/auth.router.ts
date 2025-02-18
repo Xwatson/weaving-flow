@@ -1,9 +1,8 @@
-import { publicProcedure, router } from '../trpc';
-import { z } from 'zod';
-import { AuthService } from '../services/auth';
-import { TRPCError } from '@trpc/server';
-import jwt from 'jsonwebtoken';
-import { authMiddleware } from '../middleware/auth.middleware';
+import { protectedProcedure, publicProcedure, router } from "../trpc";
+import { z } from "zod";
+import { AuthService } from "../services/auth";
+import { TRPCError } from "@trpc/server";
+import jwt from "jsonwebtoken";
 
 const authService = new AuthService();
 
@@ -18,8 +17,6 @@ const registerSchema = z.object({
   name: z.string().optional(),
 });
 
-const protectedProcedure = publicProcedure.use(authMiddleware);
-
 export const authRouter = router({
   register: publicProcedure
     .input(registerSchema)
@@ -31,9 +28,9 @@ export const authRouter = router({
       );
 
       const token = jwt.sign(
-        { userId: user.id },
-        process.env.JWT_SECRET || 'your-secret-key',
-        { expiresIn: '7d' }
+        { userId: user.id, email: user.email, name: user.name },
+        process.env.JWT_SECRET || "your-secret-key",
+        { expiresIn: "7d" }
       );
 
       return {
@@ -46,49 +43,45 @@ export const authRouter = router({
       };
     }),
 
-  login: publicProcedure
-    .input(loginSchema)
-    .mutation(async ({ input }) => {
-      const user = await authService.validateUser(input.email, input.password);
+  login: publicProcedure.input(loginSchema).mutation(async ({ input }) => {
+    const user = await authService.validateUser(input.email, input.password);
 
-      if (!user) {
-        throw new TRPCError({
-          code: 'UNAUTHORIZED',
-          message: '邮箱或密码错误',
-        });
-      }
+    if (!user) {
+      throw new TRPCError({
+        code: "UNAUTHORIZED",
+        message: "邮箱或密码错误",
+      });
+    }
 
-      const token = jwt.sign(
-        { userId: user.id },
-        process.env.JWT_SECRET || 'your-secret-key',
-        { expiresIn: '7d' }
-      );
+    const token = jwt.sign(
+      { userId: user.id, email: user.email, name: user.name },
+      process.env.JWT_SECRET || "your-secret-key",
+      { expiresIn: "7d" }
+    );
 
-      return {
-        token,
-        user: {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-        },
-      };
-    }),
+    return {
+      token,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+      },
+    };
+  }),
 
-  me: protectedProcedure
-    .query(async ({ ctx }) => {
-      const user = await authService.getCurrentUser(ctx.user.id);
-      if (!user) {
-        throw new TRPCError({
-          code: 'NOT_FOUND',
-          message: '用户不存在',
-        });
-      }
+  me: protectedProcedure.query(async ({ ctx }) => {
+    const user = await authService.getCurrentUser(ctx.user.id);
+    if (!user) {
+      throw new TRPCError({
+        code: "NOT_FOUND",
+        message: "用户不存在",
+      });
+    }
 
-      return user;
-    }),
+    return user;
+  }),
 
-  logout: protectedProcedure
-    .mutation(() => {
-      return { success: true };
-    }),
+  logout: protectedProcedure.mutation(() => {
+    return { success: true };
+  }),
 });
