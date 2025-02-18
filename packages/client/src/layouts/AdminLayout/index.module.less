@@ -3,6 +3,11 @@
 .sider {
   box-shadow: 2px 0 8px 0 rgba(29, 35, 41, 0.05);
   z-index: 10;
+  position: fixed;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 2;
 
   :global {
     .ant-layout-sider-children {
@@ -14,14 +19,17 @@
 
 .logo {
   height: 64px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  padding: 16px;
+  text-align: center;
+  overflow: hidden;
+  white-space: nowrap;
   border-bottom: 1px solid #f0f0f0;
   
-  span {
+  a {
+    color: inherit;
+    text-decoration: none;
     font-size: 18px;
-    font-weight: 600;
+    font-weight: bold;
   }
 }
 
@@ -43,12 +51,19 @@
 }
 
 .header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   padding: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  width: 100%;
 }
 
 .userInfo {
   display: flex;
-  align-items: center;}
+  align-items: center;
+  padding-right: 24px;
+}
+
