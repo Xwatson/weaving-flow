@@ -119,11 +119,12 @@ const AdminLayout: React.FC = () => {
   return (
     <Layout
       className={themeMode === "dark" ? styles.dark : ""}
-      style={{ minHeight: "100vh" }}
+      style={{ width: "100%", minHeight: "100vh" }}
     >
       <Sider
         className={styles.sider}
         trigger={null}
+        width={200}
         collapsible
         collapsed={collapsed}
         style={{ background: colorBgContainer }}
@@ -143,7 +144,7 @@ const AdminLayout: React.FC = () => {
           }))}
         />
       </Sider>
-      <Layout>
+      <Layout style={{ flex: 1 }}>
         <Header
           className={styles.header}
           style={{ background: colorBgContainer }}
