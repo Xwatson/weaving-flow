@@ -1,3 +1,38 @@
 .editLayout {
+  position: relative;
   height: 100%;
+  .editCollapse {
+    height: 100%;
+    position: absolute;
+    top: 0;
+    right: -1px;
+    border-left: 1px solid #5a5a5a;
+
+    :global {
+     .anticon {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      left:-6px;
+      font-size: 12px;
+      padding-left: 5px;
+      cursor: pointer;
+      padding: 30px 0;
+      border-radius: 4px;
+      background: #3e3e3e;
+      z-index: 10;
+     } 
+    }
+    // width: 12px;
+    // height: 35px;
+    // background: #828282;
+    // right: -5px;
+    // top: 50%;
+    // transform: translateY(-50%);
+    // cursor: pointer;
+    // font-size: 12px;
+    // border-radius: 3px;
+    // padding-top: 9px;
+    // padding-left: 0;
+  }
 }

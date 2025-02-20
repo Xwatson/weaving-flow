@@ -31,7 +31,13 @@ import ReactFlow, {
 } from "reactflow";
 import "reactflow/dist/style.css";
 import styles from "./index.module.less";
-import { MenuFoldOutlined, MenuUnfoldOutlined } from "@ant-design/icons";
+import {
+  LeftOutlined,
+  MenuFoldOutlined,
+  MenuUnfoldOutlined,
+  RightOutlined,
+} from "@ant-design/icons";
+import NodeEditor from "./components/NodeEditor";
 
 const { Sider, Content } = Layout;
 
@@ -41,6 +47,7 @@ interface FlowProps {
   onNodesChange: (changes: NodeChange[]) => void;
   onEdgesChange: (changes: EdgeChange[]) => void;
   onConnect: (params: Connection) => void;
+  setNodes: React.Dispatch<React.SetStateAction<Node[]>>;
 }
 
 const Flow: React.FC<FlowProps> = ({
@@ -49,12 +56,16 @@ const Flow: React.FC<FlowProps> = ({
   onNodesChange,
   onEdgesChange,
   onConnect,
+  setNodes,
 }) => {
   const [contextMenu, setContextMenu] = useState<{
     x: number;
     y: number;
     position: XYPosition;
   } | null>(null);
+
+  const [selectedNode, setSelectedNode] = useState<Node | null>(null);
+  const [nodeEditorOpen, setNodeEditorOpen] = useState(false);
 
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const { project } = useReactFlow();
@@ -117,6 +128,22 @@ const Flow: React.FC<FlowProps> = ({
     [contextMenu, onNodesChange]
   );
 
+  const onNodeClick = useCallback((event: React.MouseEvent, node: Node) => {
+    setSelectedNode(node);
+    setNodeEditorOpen(true);
+  }, []);
+
+  const handleNodeSave = useCallback((updatedNode: Node) => {
+    setNodes((nds) =>
+      nds.map((node) => {
+        if (node.id === updatedNode.id) {
+          return updatedNode;
+        }
+        return node;
+      })
+    );
+  }, []);
+
   const contextMenuItems = [
     {
       key: "browser",
@@ -136,13 +163,14 @@ const Flow: React.FC<FlowProps> = ({
   ];
 
   return (
-    <div style={{ width: "100%", height: "100%" }} ref={reactFlowWrapper}>
+    <div ref={reactFlowWrapper} style={{ width: "100%", height: "100%" }}>
       <ReactFlow
         nodes={nodes}
         edges={edges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
+        onNodeClick={onNodeClick}
         onPaneClick={onPaneClick}
         onPaneContextMenu={onPaneContextMenu}
         onNodeContextMenu={onNodeContextMenu}
@@ -176,6 +204,12 @@ const Flow: React.FC<FlowProps> = ({
           </Dropdown>
         </div>
       )}
+      <NodeEditor
+        node={selectedNode}
+        open={nodeEditorOpen}
+        onClose={() => setNodeEditorOpen(false)}
+        onSave={handleNodeSave}
+      />
     </div>
   );
 };
@@ -280,6 +314,7 @@ const WorkflowEdit: React.FC = () => {
       <Sider
         className={styles.editSider}
         width={300}
+        collapsedWidth={0}
         collapsible
         collapsed={collapsed}
         trigger={null}
@@ -288,16 +323,12 @@ const WorkflowEdit: React.FC = () => {
         }}
       >
         <div style={{ padding: "16px" }}>
-          <Button
-            type="text"
-            icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+          <div
+            className={styles.editCollapse}
             onClick={() => setCollapsed(!collapsed)}
-            style={{
-              fontSize: "16px",
-              width: 64,
-              height: 64,
-            }}
-          />
+          >
+            {collapsed ? <RightOutlined /> : <LeftOutlined />}
+          </div>
           {!collapsed && (
             <Form
               form={form}
@@ -342,6 +373,7 @@ const WorkflowEdit: React.FC = () => {
               onNodesChange={onNodesChange}
               onEdgesChange={onEdgesChange}
               onConnect={onConnect}
+              setNodes={setNodes}
             />
           </ReactFlowProvider>
         )}
