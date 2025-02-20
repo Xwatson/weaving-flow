@@ -16,7 +16,7 @@ const Login = () => {
     onSuccess: (data) => {
       localStorage.setItem("token", data.token);
       message.success("登录成功");
-      navigate("/admin/dashboard");
+      navigate("/");
     },
     onError: () => {
       message.error("登录失败，请检查邮箱和密码");

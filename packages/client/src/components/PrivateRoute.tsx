@@ -6,16 +6,20 @@ import { Spin } from "antd";
 
 const PrivateRoute = () => {
   const token = useSelector((state: RootState) => state.auth.token);
+
+  if (!token) {
+    return <Navigate to="/login" replace />;
+  }
+
   const { data: user, isLoading } = trpc.auth.me.useQuery(undefined, {
-    enabled: !!token,
     retry: false,
   });
 
   if (isLoading) {
-    return <Spin />;
+    return <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100vh" }}><Spin size="large" /></div>;
   }
 
-  if (!token || !user) {
+  if (!user) {
     return <Navigate to="/login" replace />;
   }
 

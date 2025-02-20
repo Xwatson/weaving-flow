@@ -1,9 +1,9 @@
-import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { Form, Input, Button, Card, message } from 'antd';
-import { UserOutlined, LockOutlined, MailOutlined } from '@ant-design/icons';
-import { trpc } from '@/utils/trpc';
-import styles from './index.module.less';
+import { useState } from "react";
+import { useNavigate, Link } from "react-router-dom";
+import { Form, Input, Button, Card, message } from "antd";
+import { UserOutlined, LockOutlined, MailOutlined } from "@ant-design/icons";
+import { trpc } from "@/utils/trpc";
+import styles from "./index.module.less";
 
 interface RegisterForm {
   email: string;
@@ -15,12 +15,12 @@ const Register = () => {
   const navigate = useNavigate();
   const registerMutation = trpc.auth.register.useMutation({
     onSuccess: (data) => {
-      localStorage.setItem('token', data.token);
-      message.success('注册成功');
-      navigate('/admin/dashboard');
+      localStorage.setItem("token", data.token);
+      message.success("注册成功");
+      navigate("/");
     },
     onError: () => {
-      message.error('注册失败，请检查输入');
+      message.error("注册失败，请检查输入");
     },
   });
 
@@ -31,16 +31,12 @@ const Register = () => {
   return (
     <div className={styles.container}>
       <Card className={styles.card} title="注册">
-        <Form
-          name="register"
-          onFinish={onFinish}
-          size="large"
-        >
+        <Form name="register" onFinish={onFinish} size="large">
           <Form.Item
             name="email"
             rules={[
-              { required: true, message: '请输入邮箱' },
-              { type: 'email', message: '请输入有效的邮箱地址' },
+              { required: true, message: "请输入邮箱" },
+              { type: "email", message: "请输入有效的邮箱地址" },
             ]}
           >
             <Input
@@ -53,8 +49,8 @@ const Register = () => {
           <Form.Item
             name="password"
             rules={[
-              { required: true, message: '请输入密码' },
-              { min: 6, message: '密码至少6个字符' },
+              { required: true, message: "请输入密码" },
+              { min: 6, message: "密码至少6个字符" },
             ]}
           >
             <Input.Password
@@ -64,10 +60,7 @@ const Register = () => {
             />
           </Form.Item>
 
-          <Form.Item
-            name="name"
-            rules={[{ required: false }]}
-          >
+          <Form.Item name="name" rules={[{ required: false }]}>
             <Input
               prefix={<UserOutlined />}
               placeholder="姓名（选填）"
