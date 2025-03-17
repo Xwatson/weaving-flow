@@ -10,8 +10,8 @@ export class EndNode extends BaseNode {
   private workflowService: any; // 这里应该注入工作流服务，用于结束工作流
   private customOutputs: OutputParamConfig[];
 
-  constructor(name: string, config: Record<string, any> = {}) {
-    super(name, "end", config);
+  constructor(id: string, name: string, config: Record<string, any> = {}) {
+    super(id, name, "end", config);
     this.customOutputs = config.outputs || [];
   }
 
@@ -56,17 +56,6 @@ export class EndNode extends BaseNode {
       // 如果出错，也需要执行清理工作
       await this.cleanup();
       throw error;
-    }
-  }
-
-  private async cleanup(): Promise<void> {
-    // 在这里执行一些清理工作，比如：
-    // 1. 关闭所有打开的浏览器窗口
-    // 2. 释放资源
-    // 3. 保存日志
-    // 4. 发送通知等
-    if (this.workflowService) {
-      await this.workflowService.cleanup(this.workflowId);
     }
   }
 

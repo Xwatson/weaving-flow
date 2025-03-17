@@ -1,215 +1,206 @@
-import EventEmitter from 'eventemitter3';
-import type { Workflow, WorkflowConnection } from '@weaving-flow/core';
-import { BaseNode } from './BaseNode';
+import { BaseNode } from "../core/BaseNode";
+import { StartNode } from "../nodes/StartNode";
+import { EndNode } from "../nodes/EndNode";
+import { BrowserNode } from "../nodes/BrowserNode";
+import { LoopNode } from "../nodes/LoopNode";
+import { BrowserService } from "../services/BrowserService";
 
-export interface WorkflowStatus {
-  status: 'idle' | 'running' | 'completed' | 'error';
-  currentNode?: string;
-  error?: Error;
+// 工作流连接定义
+export interface WorkflowConnection {
+  sourceNodeId: string;
+  targetNodeId: string;
+  sourceOutput: string;
+  targetInput: string;
 }
 
-export class WorkflowEngine extends EventEmitter {
-  private nodes: Map<string, BaseNode>;
-  private connections: WorkflowConnection[];
-  private status: WorkflowStatus;
+export class WorkflowEngine {
+  private nodes: Map<string, BaseNode> = new Map();
+  private connections: WorkflowConnection[] = [];
+  private browserService?: BrowserService;
+  // 节点执行缓存，用于存储已执行过的节点实例
+  private nodeInstanceCache: Map<string, BaseNode> = new Map();
+  // 循环执行路径跟踪
+  private loopExecutionPath: Set<string> = new Set();
+  // 是否正在循环中
+  private inLoopExecution: boolean = false;
 
-  constructor() {
-    super();
-    this.nodes = new Map();
-    this.connections = [];
-    this.status = { status: 'idle' };
-  }
+  constructor() {}
 
   // 添加节点
   addNode(node: BaseNode): void {
-    this.nodes.set(node.id, node);
-  }
+    // 注入服务
+    if (node instanceof BrowserNode) {
+      this.browserService = new BrowserService();
+      node.setBrowserService(this.browserService);
+    }
 
-  // 删除节点
-  removeNode(nodeId: string): void {
-    this.nodes.delete(nodeId);
-    // 删除相关的连接
-    this.connections = this.connections.filter(
-      conn => conn.sourceNodeId !== nodeId && conn.targetNodeId !== nodeId
-    );
+    this.nodes.set(node.id, node);
   }
 
   // 添加连接
   addConnection(connection: WorkflowConnection): void {
-    const sourceNode = this.nodes.get(connection.sourceNodeId);
-    const targetNode = this.nodes.get(connection.targetNodeId);
-
-    if (!sourceNode || !targetNode) {
-      throw new Error('Source or target node not found');
-    }
-
-    // 验证输出和输入是否存在
-    if (!sourceNode.outputs.includes(connection.sourceOutput)) {
-      throw new Error(`Output ${connection.sourceOutput} not found in source node`);
-    }
-    if (!targetNode.inputs.includes(connection.targetInput)) {
-      throw new Error(`Input ${connection.targetInput} not found in target node`);
-    }
-
     this.connections.push(connection);
   }
 
-  // 删除连接
-  removeConnection(connectionId: string): void {
-    this.connections = this.connections.filter(conn => conn.id !== connectionId);
+  // 获取节点的所有输出连接
+  getNodeOutputConnections(nodeId: string): WorkflowConnection[] {
+    return this.connections.filter((conn) => conn.sourceNodeId === nodeId);
   }
 
-  // 获取节点的输入连接
-  private getInputConnections(nodeId: string): WorkflowConnection[] {
-    return this.connections.filter(conn => conn.targetNodeId === nodeId);
-  }
-
-  // 获取节点的输出连接
-  private getOutputConnections(nodeId: string): WorkflowConnection[] {
-    return this.connections.filter(conn => conn.sourceNodeId === nodeId);
-  }
-
-  // 获取入度为0的节点（起始节点）
-  private getStartNodes(): BaseNode[] {
-    return Array.from(this.nodes.values()).filter(node => 
-      !this.connections.some(conn => conn.targetNodeId === node.id)
-    );
-  }
-
-  // 检查是否存在循环依赖
-  private checkForCycles(): boolean {
-    const visited = new Set<string>();
-    const recursionStack = new Set<string>();
-
-    const hasCycle = (nodeId: string): boolean => {
-      if (recursionStack.has(nodeId)) {
-        return true;
-      }
-      if (visited.has(nodeId)) {
-        return false;
-      }
-
-      visited.add(nodeId);
-      recursionStack.add(nodeId);
-
-      const outputConnections = this.getOutputConnections(nodeId);
-      for (const conn of outputConnections) {
-        if (hasCycle(conn.targetNodeId)) {
-          return true;
-        }
-      }
-
-      recursionStack.delete(nodeId);
-      return false;
-    };
-
-    for (const nodeId of this.nodes.keys()) {
-      if (hasCycle(nodeId)) {
-        return true;
-      }
-    }
-
-    return false;
+  // 获取节点的所有输入连接
+  getNodeInputConnections(nodeId: string): WorkflowConnection[] {
+    return this.connections.filter((conn) => conn.targetNodeId === nodeId);
   }
 
   // 执行工作流
-  async execute(): Promise<void> {
-    if (this.status.status === 'running') {
-      throw new Error('Workflow is already running');
+  async execute(input: Record<string, any> = {}): Promise<Record<string, any>> {
+    // 重置执行状态
+    this.nodeInstanceCache.clear();
+    this.loopExecutionPath.clear();
+    this.inLoopExecution = false;
+
+    // 找到开始节点
+    const startNode = Array.from(this.nodes.values()).find(
+      (node) => node instanceof StartNode
+    ) as StartNode;
+
+    if (!startNode) {
+      throw new Error("工作流中未找到开始节点");
     }
 
-    if (this.checkForCycles()) {
-      throw new Error('Circular dependency detected in workflow');
+    // 设置开始节点的输入
+    for (const [key, value] of Object.entries(input)) {
+      startNode.setInput(key, value);
     }
 
-    this.status = { status: 'running' };
-    this.emit('start');
+    // 执行开始节点
+    await this.executeNode(startNode);
 
-    try {
-      const startNodes = this.getStartNodes();
-      await Promise.all(startNodes.map(node => this.executeNode(node)));
+    // 找到结束节点
+    const endNode = Array.from(this.nodes.values()).find(
+      (node) => node instanceof EndNode
+    );
 
-      this.status = { status: 'completed' };
-      this.emit('complete');
-    } catch (error) {
-      this.status = { status: 'error', error: error as Error };
-      this.emit('error', error);
-      throw error;
+    if (!endNode) {
+      throw new Error("工作流中未找到结束节点");
+    }
+
+    // 收集输出结果
+    const result: Record<string, any> = {};
+    for (const output of endNode.getCustomOutputs()) {
+      result[output.name] = endNode.getOutput(output.name);
+    }
+
+    return result;
+  }
+
+  // 执行单个节点并传递数据给下游节点
+  private async executeNode(node: BaseNode): Promise<void> {
+    // 缓存节点实例，用于循环复用
+    this.nodeInstanceCache.set(node.id, node);
+
+    // 检查是否是循环节点
+    const isLoopNode = node instanceof LoopNode;
+
+    // 执行节点
+    await node.execute();
+
+    // 如果是循环节点，处理循环逻辑
+    if (isLoopNode) {
+      const loopNode = node as LoopNode;
+      const continueLoop = loopNode.getOutput("continueLoop");
+      const targetNodeId = loopNode.getOutput("targetNodeId");
+
+      if (continueLoop && targetNodeId) {
+        // 标记正在循环执行
+        this.inLoopExecution = true;
+
+        // 获取目标节点
+        let targetNode = this.nodes.get(targetNodeId);
+
+        if (!targetNode) {
+          throw new Error(`循环目标节点 ${targetNodeId} 不存在`);
+        }
+
+        // 如果应该复用节点实例并且已经有缓存，则使用缓存的实例
+        if (
+          loopNode.shouldReuseTargetNode() &&
+          this.nodeInstanceCache.has(targetNodeId)
+        ) {
+          targetNode = this.nodeInstanceCache.get(targetNodeId)!;
+          console.log(`复用节点实例: ${targetNodeId}`);
+        }
+
+        // 记录循环执行路径
+        this.loopExecutionPath.add(targetNodeId);
+
+        // 获取循环节点的输出连接
+        const loopConnections = this.getNodeOutputConnections(node.id);
+
+        // 传递数据给目标节点
+        for (const connection of loopConnections) {
+          if (connection.targetNodeId === targetNodeId) {
+            const outputValue = node.getOutput(connection.sourceOutput);
+            targetNode.setInput(connection.targetInput, outputValue);
+          }
+        }
+
+        // 执行目标节点
+        await this.executeNode(targetNode);
+        return; // 直接返回，不执行后续的正常流程
+      } else {
+        // 循环结束，重置状态
+        this.inLoopExecution = false;
+        this.loopExecutionPath.clear();
+      }
+    }
+
+    // 获取节点的输出连接
+    const outputConnections = this.getNodeOutputConnections(node.id);
+
+    // 为每个连接传递数据
+    for (const connection of outputConnections) {
+      const sourceNode = this.nodes.get(connection.sourceNodeId);
+      const targetNode = this.nodes.get(connection.targetNodeId);
+
+      if (sourceNode && targetNode) {
+        // 获取源节点的输出值
+        const outputValue = sourceNode.getOutput(connection.sourceOutput);
+
+        // 设置目标节点的输入值
+        targetNode.setInput(connection.targetInput, outputValue);
+
+        // 递归执行目标节点
+        await this.executeNode(targetNode);
+      }
     }
   }
 
-  // 执行单个节点
-  private async executeNode(node: BaseNode): Promise<void> {
-    this.status.currentNode = node.id;
-    this.emit('nodeStart', node);
-
-    try {
-      // 获取并设置输入值
-      const inputConnections = this.getInputConnections(node.id);
-      for (const conn of inputConnections) {
-        const sourceNode = this.nodes.get(conn.sourceNodeId);
-        if (sourceNode) {
-          const value = sourceNode.getOutput(conn.sourceOutput);
-          node.setInput(conn.targetInput, value);
+  // 清理资源
+  async cleanup(): Promise<void> {
+    // 清理所有节点资源
+    for (const node of this.nodes.values()) {
+      if (typeof (node as any).cleanup === "function") {
+        try {
+          await (node as any).cleanup();
+        } catch (error) {
+          console.error(`清理节点 ${node.id} 资源失败:`, error);
         }
       }
-
-      // 执行节点
-      await node.execute();
-
-      // 执行下一个节点
-      const outputConnections = this.getOutputConnections(node.id);
-      await Promise.all(
-        outputConnections.map(async conn => {
-          const targetNode = this.nodes.get(conn.targetNodeId);
-          if (targetNode) {
-            await this.executeNode(targetNode);
-          }
-        })
-      );
-
-      this.emit('nodeComplete', node);
-    } catch (error) {
-      this.emit('nodeError', node, error);
-      throw error;
     }
-  }
 
-  // 导出工作流配置
-  export(): Workflow {
-    return {
-      id: '',  // 由外部设置
-      name: '', // 由外部设置
-      nodes: Array.from(this.nodes.values()),
-      connections: this.connections,
-    };
-  }
-
-  // 从配置导入工作流
-  import(workflow: Workflow): void {
+    // 清空节点和连接
     this.nodes.clear();
     this.connections = [];
+    this.nodeInstanceCache.clear();
 
-    workflow.nodes.forEach(node => {
-      if (node instanceof BaseNode) {
-        this.addNode(node);
+    // 关闭浏览器服务
+    if (this.browserService) {
+      try {
+        await this.browserService.close({});
+      } catch (error) {
+        console.error("关闭浏览器服务失败:", error);
       }
-    });
-
-    workflow.connections.forEach(conn => {
-      this.addConnection(conn);
-    });
-  }
-
-  // 获取当前状态
-  getStatus(): WorkflowStatus {
-    return this.status;
-  }
-
-  // 重置工作流
-  reset(): void {
-    this.nodes.forEach(node => node.reset());
-    this.status = { status: 'idle' };
-    this.emit('reset');
+    }
   }
 }

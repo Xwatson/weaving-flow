@@ -11,8 +11,8 @@ export interface InputParamConfig {
 export class StartNode extends BaseNode {
   private customInputs: InputParamConfig[];
 
-  constructor(name: string, config: Record<string, any> = {}) {
-    super(name, "start", config);
+  constructor(id: string, name: string, config: Record<string, any> = {}) {
+    super(id, name, "start", config);
     this.customInputs = config.inputs || [];
   }
 

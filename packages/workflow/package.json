@@ -13,6 +13,7 @@
   "dependencies": {
     "@weaving-flow/core": "workspace:*",
     "eventemitter3": "^5.0.1",
+    "playwright": "^1.40.1",
     "uuid": "^9.0.1"
   },
   "devDependencies": {

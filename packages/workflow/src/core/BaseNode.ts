@@ -12,6 +12,7 @@ export interface NodeInput {
 export interface NodeOutput {
   name: string;
   type: string;
+  description?: string;
 }
 
 export abstract class BaseNode implements WorkflowNode {
@@ -25,8 +26,13 @@ export abstract class BaseNode implements WorkflowNode {
   private inputValues: Map<string, any>;
   private outputValues: Map<string, any>;
 
-  constructor(name: string, type: string, config: Record<string, any> = {}) {
-    this.id = uuidv4();
+  constructor(
+    id: string,
+    name: string,
+    type: string,
+    config: Record<string, any> = {}
+  ) {
+    this.id = id;
     this.name = name;
     this.type = type;
     this.config = config;
@@ -64,7 +70,7 @@ export abstract class BaseNode implements WorkflowNode {
     if (this.validateInput(name, value)) {
       this.inputValues.set(name, value);
     } else {
-      throw new Error(`Invalid input value for ${name}`);
+      console.warn(`Invalid input value for ${name}`);
     }
   }
 
@@ -77,7 +83,7 @@ export abstract class BaseNode implements WorkflowNode {
   protected setOutput(name: string, value: any): void {
     const output = this.getOutputDefinitions().find((o) => o.name === name);
     if (!output) {
-      throw new Error(`Output ${name} not defined`);
+      console.warn(`Output ${name} not defined`);
     }
     this.outputValues.set(name, value);
   }
@@ -114,5 +120,11 @@ export abstract class BaseNode implements WorkflowNode {
   // 获取工作流ID
   getWorkflowId(): string {
     return this.workflowId;
+  }
+
+  // 清理资源方法（默认实现为空，子类可以重写）
+  async cleanup(): Promise<void> {
+    // 默认不执行任何操作
+    // 子类可以重写此方法以清理特定资源
   }
 }
