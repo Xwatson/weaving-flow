@@ -1,9 +1,10 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Button, Table, Space, Tag, message } from "antd";
 import {
   PlusOutlined,
   PlayCircleOutlined,
   DeleteOutlined,
+  StopOutlined,
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import { trpc } from "@/utils/trpc";
@@ -12,15 +13,132 @@ const Workflow: React.FC = () => {
   const navigate = useNavigate();
   const { data: workflows, isLoading, refetch } = trpc.workflow.list.useQuery();
   
+  // 添加状态管理
+  const [runningInstances, setRunningInstances] = useState<Record<string, string>>({});
+  const [statusPolling, setStatusPolling] = useState<Record<string, NodeJS.Timeout>>({});
+  const [workflowStatuses, setWorkflowStatuses] = useState<Record<string, any>>({});
+  
+  // 执行工作流
   const executeMutation = trpc.workflow.execute.useMutation({
-    onSuccess: () => {
+    onSuccess: (data, variables) => {
       message.success("工作流开始执行");
+      // 保存工作流实例ID
+      setRunningInstances(prev => ({
+        ...prev,
+        [variables.id]: data.instanceId
+      }));
+      
+      // 开始轮询工作流状态
+      startPollingStatus(variables.id, data.instanceId);
+      
       refetch();
     },
     onError: () => {
       message.error("执行失败");
     },
   });
+  
+  // 停止工作流
+  const stopWorkflowMutation = trpc.workflow.stopWorkflow.useMutation({
+    onSuccess: (_, variables) => {
+      message.success("工作流已停止");
+      
+      // 停止轮询
+      const workflowId = Object.keys(runningInstances).find(
+        key => runningInstances[key] === variables.instanceId
+      );
+      
+      if (workflowId && statusPolling[workflowId]) {
+        clearInterval(statusPolling[workflowId]);
+        
+        // 清理状态
+        setStatusPolling(prev => {
+          const newPolling = { ...prev };
+          delete newPolling[workflowId];
+          return newPolling;
+        });
+        
+        setRunningInstances(prev => {
+          const newInstances = { ...prev };
+          delete newInstances[workflowId];
+          return newInstances;
+        });
+      }
+      
+      refetch();
+    },
+    onError: () => {
+      message.error("停止工作流失败");
+    },
+  });
+  
+  // 获取工作流状态
+  const { refetch: refetchStatus } = trpc.workflow.getWorkflowStatus.useQuery(
+    { instanceId: "" }, // 默认空ID，不会实际查询
+    {
+      enabled: false, // 默认不启用，通过手动调用refetchStatus触发
+    }
+  );
+  
+  // 开始轮询工作流状态
+  const startPollingStatus = (workflowId: string, instanceId: string) => {
+    // 先清除可能存在的轮询
+    if (statusPolling[workflowId]) {
+      clearInterval(statusPolling[workflowId]);
+    }
+    
+    // 设置新的轮询
+    const intervalId = setInterval(async () => {
+      try {
+        const result = await refetchStatus({
+          queryKey: ['workflow.getWorkflowStatus', { instanceId }]
+        });
+        const status = result.data;
+        
+        // 更新状态
+        setWorkflowStatuses(prev => ({
+          ...prev,
+          [workflowId]: status
+        }));
+        
+        // 如果工作流已完成或出错，停止轮询
+        if (status && (status.status === 'completed' || status.status === 'error' || status.status === 'stopped')) {
+          clearInterval(intervalId);
+          
+          setStatusPolling(prev => {
+            const newPolling = { ...prev };
+            delete newPolling[workflowId];
+            return newPolling;
+          });
+          
+          setRunningInstances(prev => {
+            const newInstances = { ...prev };
+            delete newInstances[workflowId];
+            return newInstances;
+          });
+          
+          refetch();
+        }
+      } catch (error) {
+        console.error("获取工作流状态失败", error);
+      }
+    }, 3000); // 每3秒轮询一次
+    
+    // 保存轮询ID
+    setStatusPolling(prev => ({
+      ...prev,
+      [workflowId]: intervalId
+    }));
+  };
+  
+  // 组件卸载时清除所有轮询
+  useEffect(() => {
+    return () => {
+      Object.values(statusPolling).forEach(intervalId => {
+        clearInterval(intervalId);
+      });
+    };
+  }, [statusPolling]);
 
   const deleteMutation = trpc.workflow.delete.useMutation({
     onSuccess: () => {
@@ -47,9 +165,14 @@ const Workflow: React.FC = () => {
       title: "状态",
       dataIndex: "status",
       key: "status",
-      render: (status: string) => (
+      render: (status: string, record: any) => (
         <Tag color={status === "active" ? "green" : "default"}>
           {status === "active" ? "运行中" : "未运行"}
+          {workflowStatuses[record.id] && (
+            <span>
+              ({workflowStatuses[record.id].status === 'running' ? '执行中' : workflowStatuses[record.id].status})
+            </span>
+          )}
         </Tag>
       ),
     },
@@ -66,6 +189,16 @@ const Workflow: React.FC = () => {
           >
             运行
           </Button>
+          {runningInstances[record.id] && (
+            <Button
+              type="link"
+              icon={<StopOutlined />}
+              onClick={() => handleStop(runningInstances[record.id])}
+              loading={stopWorkflowMutation.isLoading}
+            >
+              停止
+            </Button>
+          )}
           <Button
             type="link"
             onClick={() => navigate(`/admin/workflow/edit/${record.id}`)}
@@ -88,6 +221,10 @@ const Workflow: React.FC = () => {
 
   const handleRun = async (id: string) => {
     await executeMutation.mutateAsync({ id });
+  };
+
+  const handleStop = async (instanceId: string) => {
+    await stopWorkflowMutation.mutateAsync({ instanceId });
   };
 
   const handleDelete = async (id: string) => {

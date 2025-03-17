@@ -48,6 +48,7 @@ interface FlowProps {
   onEdgesChange: (changes: EdgeChange[]) => void;
   onConnect: (params: Connection) => void;
   setNodes: React.Dispatch<React.SetStateAction<Node[]>>;
+  onNodeSave?: (nodes: Node[]) => void;
 }
 
 const Flow: React.FC<FlowProps> = ({
@@ -57,6 +58,7 @@ const Flow: React.FC<FlowProps> = ({
   onEdgesChange,
   onConnect,
   setNodes,
+  onNodeSave,
 }) => {
   const [contextMenu, setContextMenu] = useState<{
     x: number;
@@ -133,32 +135,40 @@ const Flow: React.FC<FlowProps> = ({
     setNodeEditorOpen(true);
   }, []);
 
-  const handleNodeSave = useCallback((updatedNode: Node) => {
-    setNodes((nds) =>
-      nds.map((node) => {
+  const handleNodeSave = useCallback(
+    (updatedNode: Node) => {
+      const newNodes = nodes.map((node) => {
         if (node.id === updatedNode.id) {
           return updatedNode;
         }
         return node;
-      })
-    );
-  }, []);
+      });
+      setNodes(newNodes);
+      onNodeSave?.(newNodes);
+    },
+    [onNodeSave]
+  );
 
   const contextMenuItems = [
+    {
+      key: "start",
+      label: "开始节点",
+      onClick: () => addNode("start"),
+    },
+    {
+      key: "end",
+      label: "结束节点",
+      onClick: () => addNode("end"),
+    },
     {
       key: "browser",
       label: "浏览器节点",
       onClick: () => addNode("browser"),
     },
     {
-      key: "crawler",
-      label: "爬虫节点",
-      onClick: () => addNode("crawler"),
-    },
-    {
-      key: "process",
-      label: "处理节点",
-      onClick: () => addNode("process"),
+      key: "loop",
+      label: "循环节点",
+      onClick: () => addNode("loop"),
     },
   ];
 
@@ -233,9 +243,9 @@ const WorkflowEdit: React.FC = () => {
   const navigate = useNavigate();
 
   const createMutation = trpc.workflow.create.useMutation({
-    onSuccess: () => {
-      message.success("工作流创建成功");
-      navigate("/admin/workflow");
+    onSuccess: (data) => {
+      message.success("创建成功");
+      navigate(`/admin/workflow/edit/${data.id}`);
     },
     onError: (error) => {
       message.error(error.message || "创建失败");
@@ -244,8 +254,7 @@ const WorkflowEdit: React.FC = () => {
 
   const updateMutation = trpc.workflow.update.useMutation({
     onSuccess: () => {
-      message.success("工作流更新成功");
-      navigate("/admin/workflow");
+      message.success("更新成功");
     },
     onError: (error) => {
       message.error(error.message || "更新失败");
@@ -270,6 +279,22 @@ const WorkflowEdit: React.FC = () => {
     }
   }, [workflow, form]);
 
+  const onSave = useCallback(
+    async (data: any) => {
+      try {
+        if (isEdit) {
+          await updateMutation.mutateAsync({
+            id,
+            data,
+          });
+        } else {
+          await createMutation.mutateAsync(data);
+        }
+      } catch (error) {}
+    },
+    [isEdit, id, createMutation, updateMutation]
+  );
+
   const onFinish = async (values: any) => {
     const data = {
       ...values,
@@ -278,19 +303,7 @@ const WorkflowEdit: React.FC = () => {
         edges,
       }),
     };
-
-    try {
-      if (isEdit) {
-        await updateMutation.mutateAsync({
-          id,
-          data,
-        });
-      } else {
-        await createMutation.mutateAsync(data);
-      }
-    } catch (error) {
-      // 错误已经在 mutation 的 onError 中处理
-    }
+    await onSave(data);
   };
 
   const onNodesChange = useCallback((changes: NodeChange[]) => {
@@ -304,6 +317,20 @@ const WorkflowEdit: React.FC = () => {
   const onConnect = useCallback((params: Connection) => {
     setEdges((eds) => addEdge(params, eds));
   }, []);
+
+  const handleNodeUpdate = useCallback(
+    async (nodes: Node[]) => {
+      const data = {
+        ...form.getFieldsValue(),
+        config: JSON.stringify({
+          nodes,
+          edges,
+        }),
+      };
+      await onSave(data);
+    },
+    [form, onSave]
+  );
 
   const {
     token: { colorBgContainer },
@@ -374,6 +401,7 @@ const WorkflowEdit: React.FC = () => {
               onEdgesChange={onEdgesChange}
               onConnect={onConnect}
               setNodes={setNodes}
+              onNodeSave={handleNodeUpdate}
             />
           </ReactFlowProvider>
         )}

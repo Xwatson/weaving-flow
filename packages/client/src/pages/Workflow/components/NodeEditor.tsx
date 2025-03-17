@@ -1,6 +1,7 @@
-import React from 'react';
-import { Form, Input, Button, Drawer } from 'antd';
-import { Node } from 'reactflow';
+import React from "react";
+import { Form, Input, Button, Drawer, InputNumber, Switch } from "antd";
+import { Node } from "reactflow";
+import BrowserFormItem from "./BrowserFormItem";
 
 interface NodeEditorProps {
   node: Node | null;
@@ -19,33 +20,26 @@ const NodeEditor: React.FC<NodeEditorProps> = ({
 
   React.useEffect(() => {
     if (node) {
-      form.setFieldsValue({
-        label: node.data.label,
-        description: node.data.description,
-        ...node.data.config,
-      });
+      form.setFieldsValue(node.data);
     }
   }, [node, form]);
+
+  React.useEffect(() => {
+    if (!open) {
+      form.resetFields();
+    }
+  }, [open]);
 
   const handleSubmit = async () => {
     try {
       const values = await form.validateFields();
       onSave({
         ...node,
-        data: {
-          ...node?.data,
-          label: values.label,
-          description: values.description,
-          config: {
-            ...values,
-            label: undefined,
-            description: undefined,
-          },
-        },
+        data: values,
       });
       onClose();
     } catch (error) {
-      console.error('Validation failed:', error);
+      console.error("Validation failed:", error);
     }
   };
 
@@ -66,7 +60,7 @@ const NodeEditor: React.FC<NodeEditorProps> = ({
         <Form.Item
           label="名称"
           name="label"
-          rules={[{ required: true, message: '请输入节点名称' }]}
+          rules={[{ required: true, message: "请输入节点名称" }]}
         >
           <Input placeholder="请输入节点名称" />
         </Form.Item>
@@ -76,14 +70,16 @@ const NodeEditor: React.FC<NodeEditorProps> = ({
         </Form.Item>
 
         {/* 根据节点类型添加不同的配置字段 */}
-        {node?.type === 'input' && (
-          <Form.Item label="输入配置" name={['config', 'inputType']}>
+        {node?.type === "input" && (
+          <Form.Item label="输入配置" name={["config", "inputType"]}>
             <Input placeholder="请输入配置" />
           </Form.Item>
         )}
-        
-        {node?.type === 'output' && (
-          <Form.Item label="输出配置" name={['config', 'outputType']}>
+
+        {node?.type === "browser" && <BrowserFormItem />}
+
+        {node?.type === "output" && (
+          <Form.Item label="输出配置" name={["config", "outputType"]}>
             <Input placeholder="请输入配置" />
           </Form.Item>
         )}
