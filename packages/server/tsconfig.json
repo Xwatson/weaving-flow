@@ -13,7 +13,9 @@
     "declaration": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["src/*"],
+      "@weaving-flow/workflow": ["../workflow/src"],
+      "@weaving-flow/workflow/*": ["../workflow/src/*"]
     }
   },
   "include": ["src/**/*", "prisma/**/*"],

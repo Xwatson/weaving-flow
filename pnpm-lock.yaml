@@ -242,6 +242,9 @@ importers:
       eventemitter3:
         specifier: ^5.0.1
         version: 5.0.1
+      playwright:
+        specifier: ^1.40.1
+        version: 1.49.1
       uuid:
         specifier: ^9.0.1
         version: 9.0.1

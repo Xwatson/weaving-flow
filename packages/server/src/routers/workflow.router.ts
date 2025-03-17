@@ -55,7 +55,22 @@ export const workflowRouter = router({
   execute: protectedProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ input, ctx }) => {
-      await workflowService.execute(input.id, ctx);
+      const result = await workflowService.execute(input.id, ctx);
+      return result;
+    }),
+
+  // 停止工作流
+  stopWorkflow: protectedProcedure
+    .input(z.object({ instanceId: z.string() }))
+    .mutation(async ({ input, ctx }) => {
+      await workflowService.stopWorkflow(input.instanceId, ctx);
       return { success: true };
+    }),
+
+  // 获取工作流状态
+  getWorkflowStatus: protectedProcedure
+    .input(z.object({ instanceId: z.string() }))
+    .query(async ({ input, ctx }) => {
+      return workflowService.getWorkflowStatus(input.instanceId, ctx);
     }),
 });

@@ -18,6 +18,7 @@ model User {
   bookmarks    Bookmark[]
   credentials  Credential[]
   workflows    Workflow[]
+  workflowInstances WorkflowInstance[]
 }
 
 model Bookmark {
@@ -56,4 +57,35 @@ model Workflow {
   updatedAt   DateTime @updatedAt
 
   user        User     @relation(fields: [userId], references: [id])
+  instances   WorkflowInstance[]
+}
+
+model WorkflowInstance {
+  id          String   @id @default(uuid())
+  workflowId  String
+  status      String   // running, completed, error, stopped
+  startTime   DateTime @default(now())
+  endTime     DateTime?
+  result      String?  // 存储执行结果的JSON
+  userId      String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  workflow    Workflow @relation(fields: [workflowId], references: [id])
+  user        User     @relation(fields: [userId], references: [id])
+  logs        WorkflowLog[]
+}
+
+model WorkflowLog {
+  id                String   @id @default(uuid())
+  workflowInstanceId String
+  nodeId            String
+  nodeName          String?
+  nodeType          String
+  status            String   // running, completed, error
+  message           String?
+  data              String?  // 存储节点输入输出的JSON
+  timestamp         DateTime @default(now())
+
+  workflowInstance  WorkflowInstance @relation(fields: [workflowInstanceId], references: [id])
 }
