@@ -141,9 +141,20 @@ export class WorkflowService {
     if (!workflow) {
       throw new Error("工作流不存在");
     }
+    // 检测已经执行不执行
+    let instance = await prisma.workflowInstance.findFirst({
+      where: {
+        workflowId,
+        userId: ctx.user.id,
+        status: "running",
+      },
+    });
+    if (instance) {
+      throw new Error("工作流正在执行");
+    }
 
     // 2. 创建工作流实例
-    const instance = await prisma.workflowInstance.create({
+    instance = await prisma.workflowInstance.create({
       data: {
         workflowId,
         userId: ctx.user.id,
@@ -270,7 +281,10 @@ export class WorkflowService {
     });
 
     if (!instance) {
-      throw new Error("工作流实例不存在");
+      return {
+        status: "stopped",
+        message: "工作流未执行",
+      };
     }
 
     if (instance.userId !== ctx.user.id) {
@@ -423,6 +437,10 @@ export class WorkflowService {
             endTime: new Date(),
             result: JSON.stringify(result),
           },
+        });
+        await prisma.workflow.update({
+          where: { id: workflow.id },
+          data: { status: "inactive" },
         });
 
         // 8. 清理资源
