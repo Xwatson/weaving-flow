@@ -64,6 +64,8 @@ const Flow: React.FC<FlowProps> = ({
     x: number;
     y: number;
     position: XYPosition;
+    type: "pane" | "node" | "edge";
+    id?: string;
   } | null>(null);
 
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
@@ -85,6 +87,7 @@ const Flow: React.FC<FlowProps> = ({
           x: event.clientX,
           y: event.clientY,
           position,
+          type: "pane",
         });
       }
     },
@@ -104,6 +107,30 @@ const Flow: React.FC<FlowProps> = ({
           x: event.clientX,
           y: event.clientY,
           position,
+          type: "node",
+          id: node.id,
+        });
+        setSelectedNode(node);
+      }
+    },
+    [project]
+  );
+
+  const onEdgeContextMenu = useCallback(
+    (event: React.MouseEvent, edge: Edge) => {
+      event.preventDefault();
+      const boundingRect = reactFlowWrapper.current?.getBoundingClientRect();
+      if (boundingRect) {
+        const position = project({
+          x: event.clientX - boundingRect.left,
+          y: event.clientY - boundingRect.top,
+        });
+        setContextMenu({
+          x: event.clientX,
+          y: event.clientY,
+          position,
+          type: "edge",
+          id: edge.id,
         });
       }
     },
@@ -116,7 +143,7 @@ const Flow: React.FC<FlowProps> = ({
 
   const addNode = useCallback(
     (type: string) => {
-      if (contextMenu) {
+      if (contextMenu && contextMenu.type === "pane") {
         const newNode: Node = {
           id: `${type}-${Date.now()}`,
           type,
@@ -130,7 +157,21 @@ const Flow: React.FC<FlowProps> = ({
     [contextMenu, onNodesChange]
   );
 
-  const onNodeClick = useCallback((event: React.MouseEvent, node: Node) => {
+  const deleteNode = useCallback(() => {
+    if (contextMenu && contextMenu.type === "node" && contextMenu.id) {
+      onNodesChange([{ type: "remove", id: contextMenu.id }]);
+      setContextMenu(null);
+    }
+  }, [contextMenu, onNodesChange]);
+
+  const deleteEdge = useCallback(() => {
+    if (contextMenu && contextMenu.type === "edge" && contextMenu.id) {
+      onEdgesChange([{ type: "remove", id: contextMenu.id }]);
+      setContextMenu(null);
+    }
+  }, [contextMenu, onEdgesChange]);
+
+  const onNodeClick = useCallback((_event: React.MouseEvent, node: Node) => {
     setSelectedNode(node);
     setNodeEditorOpen(true);
   }, []);
@@ -146,10 +187,11 @@ const Flow: React.FC<FlowProps> = ({
       setNodes(newNodes);
       onNodeSave?.(newNodes);
     },
-    [onNodeSave]
+    [nodes, setNodes, onNodeSave]
   );
 
-  const contextMenuItems = [
+  // Context menu items for pane (background)
+  const paneContextMenuItems = [
     {
       key: "start",
       label: "开始节点",
@@ -172,6 +214,49 @@ const Flow: React.FC<FlowProps> = ({
     },
   ];
 
+  // Context menu items for node
+  const nodeContextMenuItems = [
+    {
+      key: "edit",
+      label: "编辑节点",
+      onClick: () => {
+        if (selectedNode) {
+          setNodeEditorOpen(true);
+          setContextMenu(null);
+        }
+      },
+    },
+    {
+      key: "delete",
+      label: "删除节点",
+      onClick: deleteNode,
+    },
+  ];
+
+  // Context menu items for edge
+  const edgeContextMenuItems = [
+    {
+      key: "delete",
+      label: "删除连线",
+      onClick: deleteEdge,
+    },
+  ];
+
+  // Determine which context menu items to show based on the context
+  const getContextMenuItems = () => {
+    if (!contextMenu) return [];
+
+    switch (contextMenu.type) {
+      case "node":
+        return nodeContextMenuItems;
+      case "edge":
+        return edgeContextMenuItems;
+      case "pane":
+      default:
+        return paneContextMenuItems;
+    }
+  };
+
   return (
     <div ref={reactFlowWrapper} style={{ width: "100%", height: "100%" }}>
       <ReactFlow
@@ -184,6 +269,7 @@ const Flow: React.FC<FlowProps> = ({
         onPaneClick={onPaneClick}
         onPaneContextMenu={onPaneContextMenu}
         onNodeContextMenu={onNodeContextMenu}
+        onEdgeContextMenu={onEdgeContextMenu}
         fitView
       >
         <Background />
@@ -201,7 +287,7 @@ const Flow: React.FC<FlowProps> = ({
           }}
         >
           <Dropdown
-            menu={{ items: contextMenuItems }}
+            menu={{ items: getContextMenuItems() }}
             open={true}
             trigger={["contextMenu"]}
             getPopupContainer={(triggerNode) =>
@@ -230,6 +316,8 @@ const WorkflowEdit: React.FC = () => {
   const [collapsed, setCollapsed] = useState(false);
   const [nodes, setNodes] = useState<Node[]>([]);
   const [edges, setEdges] = useState<Edge[]>([]);
+  // 添加防抖定时器引用
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const { data: workflow, isLoading } = trpc.workflow.getById.useQuery(
     { id: id! },
@@ -244,7 +332,7 @@ const WorkflowEdit: React.FC = () => {
 
   const createMutation = trpc.workflow.create.useMutation({
     onSuccess: (data) => {
-      message.success("创建成功");
+      console.log("创建成功");
       navigate(`/admin/workflow/edit/${data.id}`);
     },
     onError: (error) => {
@@ -254,7 +342,7 @@ const WorkflowEdit: React.FC = () => {
 
   const updateMutation = trpc.workflow.update.useMutation({
     onSuccess: () => {
-      message.success("更新成功");
+      console.log("更新成功");
     },
     onError: (error) => {
       message.error(error.message || "更新失败");
@@ -279,20 +367,33 @@ const WorkflowEdit: React.FC = () => {
     }
   }, [workflow, form]);
 
-  const onSave = useCallback(
-    async (data: any) => {
-      try {
-        if (isEdit) {
-          await updateMutation.mutateAsync({
-            id,
-            data,
-          });
-        } else {
-          await createMutation.mutateAsync(data);
-        }
-      } catch (error) {}
+  const debouncedSave = useCallback(
+    (data: any) => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+
+      saveTimeoutRef.current = setTimeout(async () => {
+        try {
+          if (isEdit) {
+            await updateMutation.mutateAsync({
+              id,
+              data,
+            });
+          } else {
+            await createMutation.mutateAsync(data);
+          }
+        } catch (error) {}
+      }, 500);
     },
     [isEdit, id, createMutation, updateMutation]
+  );
+
+  const onSave = useCallback(
+    async (data: any) => {
+      debouncedSave(data);
+    },
+    [debouncedSave]
   );
 
   const onFinish = async (values: any) => {
@@ -306,16 +407,70 @@ const WorkflowEdit: React.FC = () => {
     await onSave(data);
   };
 
-  const onNodesChange = useCallback((changes: NodeChange[]) => {
-    setNodes((nds) => applyNodeChanges(changes, nds));
-  }, []);
+  const onNodesChange = useCallback(
+    (changes: NodeChange[]) => {
+      setNodes((nds) => {
+        const updatedNodes = applyNodeChanges(changes, nds);
+        // 节点变更后保存更改
+        const data = {
+          ...form.getFieldsValue(),
+          config: JSON.stringify({
+            nodes: updatedNodes,
+            edges,
+          }),
+        };
+        onSave(data);
+        return updatedNodes;
+      });
+    },
+    [edges, form, onSave]
+  );
 
-  const onEdgesChange = useCallback((changes: EdgeChange[]) => {
-    setEdges((eds) => applyEdgeChanges(changes, eds));
-  }, []);
+  const onEdgesChange = useCallback(
+    (changes: EdgeChange[]) => {
+      setEdges((eds) => {
+        const updatedEdges = applyEdgeChanges(changes, eds);
+        // 连线变更后保存更改
+        const data = {
+          ...form.getFieldsValue(),
+          config: JSON.stringify({
+            nodes,
+            edges: updatedEdges,
+          }),
+        };
+        onSave(data);
+        return updatedEdges;
+      });
+    },
+    [nodes, form, onSave]
+  );
 
-  const onConnect = useCallback((params: Connection) => {
-    setEdges((eds) => addEdge(params, eds));
+  const onConnect = useCallback(
+    (params: Connection) => {
+      setEdges((eds) => {
+        const updatedEdges = addEdge(params, eds);
+        // 创建新连接后保存更改
+        const data = {
+          ...form.getFieldsValue(),
+          config: JSON.stringify({
+            nodes,
+            edges: updatedEdges,
+          }),
+        };
+        onSave(data);
+        return updatedEdges;
+      });
+    },
+    [nodes, form, onSave]
+  );
+
+  // 组件卸载时清除定时器
+  useEffect(() => {
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
   }, []);
 
   const handleNodeUpdate = useCallback(
@@ -327,9 +482,10 @@ const WorkflowEdit: React.FC = () => {
           edges,
         }),
       };
+
       await onSave(data);
     },
-    [form, onSave]
+    [form, edges, onSave]
   );
 
   const {

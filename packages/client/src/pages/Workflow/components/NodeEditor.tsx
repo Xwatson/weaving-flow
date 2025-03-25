@@ -1,7 +1,11 @@
 import React from "react";
-import { Form, Input, Button, Drawer, InputNumber, Switch } from "antd";
+import { Form, Input, Button, Drawer } from "antd";
 import { Node } from "reactflow";
-import BrowserFormItem from "./BrowserFormItem";
+import BrowserNode from "./FormItems/BrowserNode";
+import InputParams from "./FormItems/InputParams";
+import StartNode from "./FormItems/StartNode";
+import EndNode from "./FormItems/EndNode";
+import LoopNode from "./FormItems/LoopNode";
 
 interface NodeEditorProps {
   node: Node | null;
@@ -24,12 +28,6 @@ const NodeEditor: React.FC<NodeEditorProps> = ({
     }
   }, [node, form]);
 
-  React.useEffect(() => {
-    if (!open) {
-      form.resetFields();
-    }
-  }, [open]);
-
   const handleSubmit = async () => {
     try {
       const values = await form.validateFields();
@@ -43,20 +41,35 @@ const NodeEditor: React.FC<NodeEditorProps> = ({
     }
   };
 
+  const handleClose = () => {
+    handleSubmit();
+  };
+
+  const renderFormItem = () => {
+    switch (node?.type) {
+      case "start":
+        return <StartNode />;
+      case "browser":
+        return <BrowserNode form={form} />;
+      case "loop":
+        return <LoopNode />;
+      case "end":
+        return <EndNode />;
+      default:
+        return null;
+    }
+  };
+
   return (
     <Drawer
       title="节点配置"
       placement="right"
-      width={400}
-      onClose={onClose}
+      width={480}
+      onClose={handleClose}
       open={open}
-      extra={
-        <Button type="primary" onClick={handleSubmit}>
-          保存
-        </Button>
-      }
     >
       <Form form={form} layout="vertical">
+        <InputParams />
         <Form.Item
           label="名称"
           name="label"
@@ -66,21 +79,19 @@ const NodeEditor: React.FC<NodeEditorProps> = ({
         </Form.Item>
 
         <Form.Item label="描述" name="description">
-          <Input.TextArea placeholder="请输入节点描述" />
+          <Input placeholder="请输入节点描述" />
         </Form.Item>
 
-        {/* 根据节点类型添加不同的配置字段 */}
-        {node?.type === "input" && (
-          <Form.Item label="输入配置" name={["config", "inputType"]}>
-            <Input placeholder="请输入配置" />
-          </Form.Item>
-        )}
+        {renderFormItem()}
 
-        {node?.type === "browser" && <BrowserFormItem />}
-
-        {node?.type === "output" && (
-          <Form.Item label="输出配置" name={["config", "outputType"]}>
-            <Input placeholder="请输入配置" />
+        {node?.type !== "start" && node?.type !== "end" && (
+          <Form.Item label="输出" name={["output", "result"]}>
+            <Input
+              disabled
+              placeholder={
+                node?.type === "browser" ? "输出最后一个 result" : "输出 result"
+              }
+            />
           </Form.Item>
         )}
       </Form>

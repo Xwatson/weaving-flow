@@ -1,13 +1,16 @@
 import React from "react";
 import { Form, Input, InputNumber, Switch } from "antd";
 
-interface BrowserFormItemProps {}
+interface BrowserNodeProps {}
 
-const BrowserFormItem: React.FC<BrowserFormItemProps> = () => {
+const BrowserNode: React.FC<BrowserNodeProps> = () => {
   return (
     <>
       <Form.Item label="URL" name="url" rules={[{ required: true }]}>
         <Input placeholder="请输入URL" />
+      </Form.Item>
+      <Form.Item label="执行脚本" name="script">
+        <Input.TextArea placeholder="请输入执行脚本" />
       </Form.Item>
       <Form.Item label="窗口宽度" name="width">
         <InputNumber min={800} max={1920} defaultValue={1280} />
@@ -25,4 +28,4 @@ const BrowserFormItem: React.FC<BrowserFormItemProps> = () => {
   );
 };
 
-export default BrowserFormItem;
+export default BrowserNode;
