@@ -201,16 +201,14 @@ const Workflow: React.FC = () => {
           >
             运行
           </Button>
-          {runningInstances[record.id] && (
-            <Button
-              type="link"
-              icon={<StopOutlined />}
-              onClick={() => handleStop(runningInstances[record.id])}
-              loading={stopWorkflowMutation.isLoading}
-            >
-              停止
-            </Button>
-          )}
+          <Button
+            type="link"
+            icon={<StopOutlined />}
+            onClick={() => handleStop(runningInstances[record.id], record.id)}
+            loading={stopWorkflowMutation.isLoading}
+          >
+            停止
+          </Button>
           <Button
             type="link"
             onClick={() => navigate(`/admin/workflow/edit/${record.id}`)}
@@ -235,8 +233,8 @@ const Workflow: React.FC = () => {
     await executeMutation.mutateAsync({ id });
   };
 
-  const handleStop = async (instanceId: string) => {
-    await stopWorkflowMutation.mutateAsync({ instanceId });
+  const handleStop = async (instanceId: string = "", id: string) => {
+    await stopWorkflowMutation.mutateAsync({ instanceId, id });
   };
 
   const handleDelete = async (id: string) => {

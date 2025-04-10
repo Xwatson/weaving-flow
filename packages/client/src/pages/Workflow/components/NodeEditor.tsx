@@ -24,13 +24,15 @@ const NodeEditor: React.FC<NodeEditorProps> = ({
 
   React.useEffect(() => {
     if (node) {
+      console.log("node", node.data);
       form.setFieldsValue(node.data);
     }
   }, [node, form]);
 
   const handleSubmit = async () => {
     try {
-      const values = await form.validateFields();
+      await form.validateFields();
+      const values = form.getFieldsValue(true);
       onSave({
         ...node,
         data: values,
