@@ -1,16 +1,39 @@
-import { IBrowserService, BrowserOptions } from "../nodes/BrowserNode";
 import * as playwright from "playwright";
 
+export interface CreateBrowserResult {
+  browser: playwright.Browser;
+  context: playwright.BrowserContext;
+  page: playwright.Page;
+}
+
+// 浏览器配置选项
+export interface BrowserOptions {
+  url?: string;
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+  userAgent?: string;
+  proxy?: string;
+  cookies?: Record<string, string>;
+  headers?: Record<string, string>;
+  timeout?: number;
+  visible?: boolean;
+}
+export interface IBrowserService {
+  create(url: string, options: BrowserOptions): Promise<CreateBrowserResult>;
+  close(): Promise<void>;
+}
 export class BrowserService implements IBrowserService {
   // 存储已创建的浏览器实例，便于管理和关闭
-  private browsers: Map<string, playwright.Browser> = new Map();
+  private browser: playwright.Browser | null = null;
 
-  async create(url: string, options: BrowserOptions): Promise<any> {
-    const browser = await playwright.chromium.launch({
+  async create(url: string, options: BrowserOptions) {
+    this.browser = await playwright.chromium.launch({
       headless: !options.visible,
     });
 
-    const context = await browser.newContext({
+    const context = await this.browser.newContext({
       viewport: {
         width: options.width || 1280,
         height: options.height || 800,
@@ -47,34 +70,25 @@ export class BrowserService implements IBrowserService {
     // 导航到URL
     await page.goto(url);
 
-    // 保存浏览器实例
-    const id = Date.now().toString();
-    this.browsers.set(id, browser);
-
     // 返回包含浏览器、页面和id的对象
     return {
-      id,
-      browser,
+      browser: this.browser,
+      context,
       page,
       // 添加常用的页面操作方法
       executeJs: async (script: string) => {
         return await page.evaluate(script);
       },
       close: async () => {
-        await this.close({ id, browser, page });
+        await this.close();
       },
     };
   }
 
-  async close(browserInstance: any): Promise<void> {
-    if (browserInstance.id && this.browsers.has(browserInstance.id)) {
-      const browser = this.browsers.get(browserInstance.id);
-      if (browser) {
-        await browser.close();
-        this.browsers.delete(browserInstance.id);
-      }
-    } else if (browserInstance.browser) {
-      await browserInstance.browser.close();
+  async close(): Promise<void> {
+    if (this.browser) {
+      await this.browser.close();
+      this.browser = null;
     }
   }
 }
