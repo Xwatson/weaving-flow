@@ -1,8 +1,13 @@
 import { BaseNode, NodeInput, NodeOutput } from "../core/BaseNode";
 
 export class ConditionNode extends BaseNode {
-  constructor(id: string, name: string, config: Record<string, any> = {}) {
-    super(id, name, "condition", config);
+  constructor(
+    id: string,
+    flowName: string,
+    nodeName: string,
+    config: Record<string, any> = {}
+  ) {
+    super(id, flowName, nodeName, "condition", config);
   }
 
   getInputDefinitions(): NodeInput[] {

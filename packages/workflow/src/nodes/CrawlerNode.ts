@@ -4,8 +4,13 @@ import type { CrawlerConfig, CrawlerResult } from "@weaving-flow/core";
 export class CrawlerNode extends BaseNode {
   private crawlerService: any; // 这里应该注入爬虫服务
 
-  constructor(id: string, name: string, config: Record<string, any> = {}) {
-    super(id, name, "crawler", config);
+  constructor(
+    id: string,
+    flowName: string,
+    nodeName: string,
+    config: Record<string, any> = {}
+  ) {
+    super(id, flowName, nodeName, "crawler", config);
   }
 
   getInputDefinitions(): NodeInput[] {

@@ -15,9 +15,18 @@ export interface NodeOutput {
   description?: string;
 }
 
+export interface ExecuteOptions {
+  notificationCallback?: (
+    subject: string,
+    message: string,
+    notificationType: "info" | "success" | "warning" | "error"
+  ) => Promise<any>;
+}
+
 export abstract class BaseNode implements WorkflowNode {
   public id: string;
   public type: string;
+  public flowName: string;
   public name: string;
   public config: Record<string, any>;
   public inputs: Map<string, any>;
@@ -28,12 +37,14 @@ export abstract class BaseNode implements WorkflowNode {
 
   constructor(
     id: string,
-    name: string,
+    flowName: string,
+    nodeName: string,
     type: string,
     config: Record<string, any> = {}
   ) {
     this.id = id;
-    this.name = name;
+    this.flowName = flowName;
+    this.name = nodeName;
     this.type = type;
     this.config = config;
     this.inputs = new Map();
@@ -43,35 +54,9 @@ export abstract class BaseNode implements WorkflowNode {
     this.outputValues = new Map();
   }
 
-  // 获取节点的输入定义
-  abstract getInputDefinitions(): NodeInput[];
-
-  // 获取节点的输出定义
-  abstract getOutputDefinitions(): NodeOutput[];
-
-  // 验证输入值
-  validateInput(name: string, value: any): boolean {
-    const input = this.getInputDefinitions().find((i) => i.name === name);
-    if (!input) {
-      return false;
-    }
-
-    // 检查必填项
-    if (input.required && (value === undefined || value === null)) {
-      return false;
-    }
-
-    // 可以在这里添加更多的类型检查逻辑
-    return true;
-  }
-
   // 设置输入值
   setInput(name: string, value: any): void {
-    if (this.validateInput(name, value)) {
-      this.inputValues.set(name, value);
-    } else {
-      console.warn(`Invalid input value for ${name}`);
-    }
+    this.inputValues.set(name, value);
   }
 
   // 获取输入值
@@ -81,10 +66,6 @@ export abstract class BaseNode implements WorkflowNode {
 
   // 设置输出值
   protected setOutput(name: string, value: any): void {
-    const output = this.getOutputDefinitions().find((o) => o.name === name);
-    if (!output) {
-      console.warn(`Output ${name} not defined`);
-    }
     this.outputValues.set(name, value);
   }
 
@@ -94,7 +75,7 @@ export abstract class BaseNode implements WorkflowNode {
   }
 
   // 执行节点
-  abstract execute(): Promise<void>;
+  abstract execute(options?: ExecuteOptions): Promise<void>;
 
   // 重置节点状态
   reset(): void {

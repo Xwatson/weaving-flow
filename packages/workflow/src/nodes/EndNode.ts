@@ -10,8 +10,13 @@ export class EndNode extends BaseNode {
   private workflowService: any; // 这里应该注入工作流服务，用于结束工作流
   private customOutputs: OutputParamConfig[];
 
-  constructor(id: string, name: string, config: Record<string, any> = {}) {
-    super(id, name, "end", config);
+  constructor(
+    id: string,
+    flowName: string,
+    nodeName: string,
+    config: Record<string, any> = {}
+  ) {
+    super(id, flowName, nodeName, "end", config);
     this.customOutputs = config.outputs || [];
   }
 

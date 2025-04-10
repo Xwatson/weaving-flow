@@ -22,8 +22,13 @@ export class LoopNode extends BaseNode {
   // 是否继续循环的标志
   private continueLoop: boolean = true;
 
-  constructor(id: string, name: string, config: Record<string, any> = {}) {
-    super(id, name, "loop", config);
+  constructor(
+    id: string,
+    flowName: string,
+    nodeName: string,
+    config: Record<string, any> = {}
+  ) {
+    super(id, flowName, nodeName, "loop", config);
     this.loopConfig = {
       maxIterations: 100, // 默认最大循环100次
       condition: "true", // 默认条件为true，即一直循环

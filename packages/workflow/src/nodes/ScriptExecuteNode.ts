@@ -3,8 +3,13 @@ import { BaseNode, NodeInput, NodeOutput } from "../core/BaseNode";
 export class ScriptExecuteNode extends BaseNode {
   private browserService: any; // 这里应该注入浏览器服务
 
-  constructor(id: string, name: string, config: Record<string, any> = {}) {
-    super(id, name, "scriptExecute", config);
+  constructor(
+    id: string,
+    flowName: string,
+    nodeName: string,
+    config: Record<string, any> = {}
+  ) {
+    super(id, flowName, nodeName, "scriptExecute", config);
   }
 
   getInputDefinitions(): NodeInput[] {
