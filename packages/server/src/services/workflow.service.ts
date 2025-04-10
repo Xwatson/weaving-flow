@@ -6,6 +6,7 @@ import { BrowserNode } from "@weaving-flow/workflow";
 import { LoopNode } from "@weaving-flow/workflow";
 import { prisma } from "../lib/prisma";
 import { Workflow } from "@prisma/client";
+import { EmailService } from "@/utils";
 
 // 导入工作流引擎和节点类
 // 存储正在运行的工作流实例
@@ -179,18 +180,32 @@ export class WorkflowService {
   }
 
   // 停止工作流
-  async stopWorkflow(instanceId: string, ctx: Context): Promise<any> {
+  async stopWorkflow(
+    instanceId: string,
+    workflowId: string,
+    ctx: Context
+  ): Promise<any> {
     if (!ctx.user) {
       throw new Error("用户未认证");
     }
 
     // 1. 获取工作流实例
-    const instance = await prisma.workflowInstance.findUnique({
+    let instance = await prisma.workflowInstance.findUnique({
       where: { id: instanceId },
     });
 
     if (!instance) {
-      throw new Error("工作流实例不存在");
+      instance = await prisma.workflowInstance.findFirst({
+        where: {
+          workflowId,
+          userId: ctx.user.id,
+          status: "running",
+        },
+      });
+      if (!instance) {
+        throw new Error("工作流实例不存在");
+      }
+      instanceId = instance?.id;
     }
 
     if (instance.userId !== ctx.user.id) {
@@ -324,35 +339,40 @@ export class WorkflowService {
 
         // 4. 创建节点并添加到引擎
         for (const nodeConfig of nodes) {
+          const nodeData = nodeConfig.data || {};
           let node;
 
           switch (nodeConfig.type) {
             case "start":
               node = new StartNode(
                 nodeConfig.id,
-                nodeConfig.name,
-                nodeConfig.data || {}
+                workflow.name,
+                nodeData.label,
+                nodeData
               );
               break;
             case "end":
               node = new EndNode(
                 nodeConfig.id,
-                nodeConfig.name,
-                nodeConfig.data || {}
+                workflow.name,
+                nodeData.label,
+                nodeData
               );
               break;
             case "browser":
               node = new BrowserNode(
                 nodeConfig.id,
-                nodeConfig.name,
-                nodeConfig.data || {}
+                workflow.name,
+                nodeData.label,
+                nodeData
               );
               break;
             case "loop":
               node = new LoopNode(
                 nodeConfig.id,
-                nodeConfig.name,
-                nodeConfig.data || {}
+                workflow.name,
+                nodeData.label,
+                nodeData
               );
               break;
             default:
@@ -372,7 +392,7 @@ export class WorkflowService {
             // 记录节点开始执行
             await this.logWorkflowEvent(instanceId, {
               nodeId: node.id,
-              nodeName: nodeConfig.data?.label || node.constructor.name,
+              nodeName: nodeData.label || node.constructor.name,
               nodeType: nodeConfig.type,
               status: "running",
               message: `开始执行节点: ${nodeConfig.data?.label || node.constructor.name}`,
@@ -380,7 +400,20 @@ export class WorkflowService {
 
             try {
               // 执行原始方法
-              await originalExecute();
+              await originalExecute({
+                notificationCallback: async (
+                  subject: string,
+                  message: string,
+                  notificationType: "info" | "success" | "warning" | "error"
+                ) => {
+                  return await EmailService.sendNotification(
+                    "",
+                    subject,
+                    message,
+                    notificationType
+                  );
+                },
+              });
 
               // 记录节点执行成功
               await this.logWorkflowEvent(instanceId, {

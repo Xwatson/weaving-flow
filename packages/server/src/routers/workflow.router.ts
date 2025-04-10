@@ -61,9 +61,9 @@ export const workflowRouter = router({
 
   // 停止工作流
   stopWorkflow: protectedProcedure
-    .input(z.object({ instanceId: z.string() }))
+    .input(z.object({ instanceId: z.string(), id: z.string() }))
     .mutation(async ({ input, ctx }) => {
-      await workflowService.stopWorkflow(input.instanceId, ctx);
+      await workflowService.stopWorkflow(input.instanceId, input.id, ctx);
       return { success: true };
     }),
 

@@ -6,6 +6,7 @@ import { appRouter } from "./routers";
 import { createContext } from "./trpc";
 import { config } from "./config";
 import { CrawlerService } from "./services/crawler";
+import { EmailService } from "./utils/emailService";
 
 const server = fastify();
 const crawler = new CrawlerService();
@@ -36,6 +37,17 @@ server.get("/api/crawler/status", async (request, reply) => {
   // const status = crawler.getStatus();
   // return status;
   return { success: true };
+});
+
+// 注册邮件
+EmailService.setDefaultConfig({
+  host: process.env.EMAIL_HOST || "smtp.example.com",
+  port: Number(process.env.EMAIL_PORT) || 587,
+  secure: process.env.EMAIL_SECURE === "true",
+  auth: {
+    user: process.env.EMAIL_USER || "your-email@example.com",
+    pass: process.env.EMAIL_PASSWORD || "your-password",
+  },
 });
 
 // 启动服务器
